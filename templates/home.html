@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hang Doodle</title>
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <style>
+      body { font-family: "Helvetica Neue", Arial, sans-serif; margin: 2rem; color: #1d1d1f; }
+      header { margin-bottom: 2rem; }
+      h1 { margin-bottom: 0.25rem; }
+      .card { border: 1px solid #e0e0e0; padding: 1.5rem; border-radius: 12px; max-width: 720px; background: #fafafa; }
+      .days-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.5rem; }
+      .day-option { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: #fff; border-radius: 8px; border: 1px solid #e0e0e0; }
+      button { background: #2563eb; color: #fff; border: none; padding: 0.75rem 1.5rem; border-radius: 999px; cursor: pointer; font-weight: 600; }
+      button:hover { background: #1d4ed8; }
+      label { font-weight: 600; }
+      input[type="text"] { width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid #d1d5db; margin-top: 0.5rem; }
+      .hint { color: #4b5563; font-size: 0.9rem; margin-top: 0.5rem; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Plan your hangout</h1>
+      <p>Pick the days you can make it, then share the link with friends.</p>
+    </header>
+
+    <section class="card">
+      <form method="post" action="/polls">
+        <div>
+          <label for="title">What are you planning?</label>
+          <input id="title" name="title" type="text" placeholder="Movie night, coffee, board games" required />
+          <p class="hint">Only days matter for this poll — pick every day you are free.</p>
+        </div>
+
+        <div style="margin-top: 1.5rem;">
+          <label>Days you are available</label>
+          <div class="days-grid" style="margin-top: 0.75rem;">
+            {{range .Upcoming}}
+              <label class="day-option">
+                <input type="checkbox" name="days" value="{{.Date}}" />
+                <span>{{.Label}}</span>
+              </label>
+            {{end}}
+          </div>
+        </div>
+
+        <div style="margin-top: 1.5rem;">
+          <button type="submit">Create poll</button>
+        </div>
+      </form>
+    </section>
+  </body>
+</html>

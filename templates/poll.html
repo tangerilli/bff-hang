@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{.Poll.Title}} · Hang Doodle</title>
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <style>
+      body { font-family: "Helvetica Neue", Arial, sans-serif; margin: 2rem; color: #1d1d1f; }
+      header { margin-bottom: 1.5rem; }
+      .share { background: #eef2ff; padding: 0.75rem 1rem; border-radius: 8px; font-family: monospace; }
+      .layout { display: grid; grid-template-columns: minmax(280px, 360px) 1fr; gap: 2rem; }
+      .card { border: 1px solid #e0e0e0; padding: 1.5rem; border-radius: 12px; background: #fafafa; }
+      .days-grid { display: grid; grid-template-columns: 1fr; gap: 0.5rem; max-height: 260px; overflow: auto; }
+      .day-option { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: #fff; border-radius: 8px; border: 1px solid #e0e0e0; }
+      button { background: #2563eb; color: #fff; border: none; padding: 0.75rem 1.5rem; border-radius: 999px; cursor: pointer; font-weight: 600; }
+      button:hover { background: #1d4ed8; }
+      input[type="text"] { width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid #d1d5db; margin-top: 0.5rem; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+      .all-available { background: #dcfce7; }
+      .names { font-size: 0.9rem; color: #374151; }
+      .error { color: #b91c1c; font-weight: 600; margin-bottom: 0.75rem; }
+      .hint { color: #4b5563; font-size: 0.9rem; }
+      @media (max-width: 900px) {
+        .layout { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>{{.Poll.Title}}</h1>
+      <p class="hint">Share this link so friends can respond:</p>
+      <div class="share">{{.ShareURL}}</div>
+    </header>
+
+    <div class="layout">
+      <section class="card">
+        <h2>Add your availability</h2>
+        <form method="post" action="/poll/{{.Poll.ID}}" hx-post="/poll/{{.Poll.ID}}" hx-target="#poll-results" hx-swap="outerHTML">
+          <div>
+            <label for="name">Your name</label>
+            <input id="name" name="name" type="text" placeholder="Taylor" required />
+          </div>
+
+          <div style="margin-top: 1rem;">
+            <label>Days you can make it</label>
+            <div class="days-grid" style="margin-top: 0.75rem;">
+              {{range .Poll.Days}}
+                <label class="day-option">
+                  <input type="checkbox" name="days" value="{{.}}" />
+                  <span>{{formatDate .}}</span>
+                </label>
+              {{end}}
+            </div>
+          </div>
+
+          <div style="margin-top: 1.25rem;">
+            <button type="submit">Save availability</button>
+          </div>
+        </form>
+      </section>
+
+      {{template "results.html" .}}
+    </div>
+  </body>
+</html>
