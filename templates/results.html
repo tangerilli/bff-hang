@@ -20,8 +20,8 @@
           <td>{{.Label}}</td>
           <td class="names">
             {{if .Names}}
-              {{range $index, $name := .Names}}
-                {{if $index}}, {{end}}{{ $name }}
+              {{range $name := .Names}}
+                <span class="chip">{{ $name }}</span>
               {{end}}
             {{else}}
               <span class="hint">No one yet</span>

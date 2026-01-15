@@ -1,8 +1,8 @@
-# Hang Doodle Specs
+# BFF Hang Specs
 
 ## Product summary
 
-Hang Doodle is a minimal Doodle-style polling app for coordinating hangouts. A poll creator selects all available days (no times) and receives a unique, hard-to-guess shareable URL. Friends respond by entering their name and selecting which of the poll’s days they can attend. The UI highlights days that work for everyone who has responded.
+BFF Hang is a minimal polling app for coordinating hangouts. A poll creator selects all available days (no times) and receives a unique, hard-to-guess shareable URL. Friends respond by entering their name and selecting which of the poll’s days they can attend. The UI highlights days that work for everyone who has responded.
 
 ## Core user flows
 

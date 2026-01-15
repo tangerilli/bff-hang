@@ -1,6 +1,6 @@
-# Hang Doodle
+# BFF Hang
 
-A lightweight Doodle-style poll app for coordinating hangout days.
+A lightweight poll app for coordinating hangout days.
 
 ## Requirements
 
