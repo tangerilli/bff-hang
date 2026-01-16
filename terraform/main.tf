@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.5"
+  required_version = ">= 1.4.6"
 
   required_providers {
     aws = {
@@ -105,6 +105,14 @@ resource "aws_lambda_function" "app" {
 resource "aws_lambda_function_url" "app" {
   function_name      = aws_lambda_function.app.function_name
   authorization_type = "NONE"
+}
+
+resource "aws_lambda_permission" "function_url" {
+  statement_id           = "AllowPublicFunctionUrl"
+  action                 = "lambda:InvokeFunctionUrl"
+  function_name          = aws_lambda_function.app.function_name
+  principal              = "*"
+  function_url_auth_type = "NONE"
 }
 
 output "lambda_function_url" {
