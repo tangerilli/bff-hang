@@ -18,6 +18,7 @@ BFF Hang is a minimal polling app for coordinating hangouts. A poll creator sele
 1. User opens a poll URL.
 2. User enters their name and selects available days.
 3. The poll summary updates (via HTMX) and highlights days that work for all respondents.
+4. Re-submitting with the same name updates the existing response.
 
 ## Requirements (implemented)
 
@@ -86,6 +87,7 @@ For each poll day, responses are aggregated into a list of names. A day is flagg
 - Home page includes a creator name field and lists the next 14 days as checkbox options, with a "More days" button.
 - Poll page allows name entry and day selection.
 - Poll page includes a copy button for the share link.
+- Submitting with the same name updates the existing response instead of adding a duplicate.
 - Results table lists availability by day and highlights rows where everyone is free.
 - HTMX updates the results panel without full page reloads.
 

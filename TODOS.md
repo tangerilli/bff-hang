@@ -4,3 +4,4 @@
 - [x] When creating a poll, add a field for the creator to set their name as well, so that they can be displayed in the list of people available for each day
 - [x] If possible, make the app hot-reload for local development, so that changes to at least the HTML files, and ideally the .go files, are picked up and incorporated without having to restart the server
 - [x] Change the "Add 14 more days" copy to be just "More days"
+- [x] Change the behaviour on the poll page so that after a user clicks "Save availability", they can change their availability and clicking "Save availability" again edits their previous selections, rather than adding a new entry

@@ -296,7 +296,15 @@ func (s *MemoryStorage) AddResponse(ctx context.Context, pollID string, response
 	if _, ok := s.polls[pollID]; !ok {
 		return errNotFound
 	}
-	s.responses[pollID] = append(s.responses[pollID], response)
+	responses := s.responses[pollID]
+	for i := range responses {
+		if responses[i].ID == response.ID {
+			responses[i] = response
+			s.responses[pollID] = responses
+			return nil
+		}
+	}
+	s.responses[pollID] = append(responses, response)
 	return nil
 }
 
@@ -411,11 +419,26 @@ func (a *App) handlePoll(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		poll, responses, err := a.storage.GetPoll(r.Context(), id)
+		if err != nil {
+			if errors.Is(err, errNotFound) {
+				http.NotFound(w, r)
+				return
+			}
+			log.Printf("failed to load poll: %v", err)
+			http.Error(w, "unable to load poll", http.StatusInternalServerError)
+			return
+		}
+
 		response := Response{
 			ID:        randomID(),
 			Name:      name,
 			Days:      selectedDays,
 			CreatedAt: time.Now().UTC(),
+		}
+		if existing := findResponseByName(responses, name); existing != nil {
+			response.ID = existing.ID
+			response.CreatedAt = existing.CreatedAt
 		}
 		if err := a.storage.AddResponse(r.Context(), id, response); err != nil {
 			log.Printf("failed to add response: %v", err)
@@ -423,7 +446,7 @@ func (a *App) handlePoll(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		poll, responses, err := a.storage.GetPoll(r.Context(), id)
+		poll, responses, err = a.storage.GetPoll(r.Context(), id)
 		if err != nil {
 			log.Printf("failed to reload poll: %v", err)
 			http.Error(w, "unable to load poll", http.StatusInternalServerError)
@@ -528,6 +551,16 @@ func normalizeDays(input []string) []string {
 
 var templateFuncs = template.FuncMap{
 	"formatDate": formatDate,
+}
+
+func findResponseByName(responses []Response, name string) *Response {
+	target := strings.ToLower(strings.TrimSpace(name))
+	for i := range responses {
+		if strings.ToLower(strings.TrimSpace(responses[i].Name)) == target {
+			return &responses[i]
+		}
+	}
+	return nil
 }
 
 func randomID() string {
