@@ -13,3 +13,4 @@
 - [x] The "Share this link so friends can respond." text is in the wrong place, it should be above the "Share Link" box, but right now it's over on the left hand side of the page, not particularly close to the "Share Link" box
 - [x] If a user visits an invalid poll URL, instead of an empty 404 page, they should be redirected to the homepage, with a message at the top saying that the link they followed was invalid
 - [x] When editing available dates as the poll creator, right now it only displays the dates that are selected (with an option to add 14 more days after). It should instead display all dates (i.e. the same list of dates as on the homepage when creating a new poll) so that you can add dates in between the ones that are already selected
+- [x] Create a Makefile for building and deploying the app to lambda

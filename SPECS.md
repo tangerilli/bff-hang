@@ -141,6 +141,14 @@ Terraform config provisions:
 
 Packaging and deployment steps are documented in `README.md`.
 
+## Makefile
+
+A Makefile provides quick targets:
+
+- `make build-lambda` builds the bootstrap binary.
+- `make package-lambda` builds and zips the Lambda package.
+- `make deploy` runs Terraform deploy with the latest package.
+
 ## Known limitations
 
 - No authentication, rate limiting, or validation beyond required fields.

@@ -51,6 +51,14 @@ Terraform config lives in `terraform/` and provisions:
 
 ### Deploy
 
+You can use the Makefile to build and deploy:
+
+```bash
+make deploy
+```
+
+Or run the steps manually:
+
 1. Build the Lambda binary for Amazon Linux and zip it:
 
    ```bash
