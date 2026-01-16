@@ -20,6 +20,9 @@ Highlights:
    USE_MEMORY_STORE=true go run .
    ```
 
+   For live template reloads in local dev, add `DEV_RELOAD_TEMPLATES=true`.
+   If you want Go hot reload, run a watcher like `air` (if installed).
+
 2. Open the app at <http://localhost:8080>.
 
 ## Configuration
@@ -29,6 +32,7 @@ Highlights:
 | `USE_MEMORY_STORE` | Use in-memory storage instead of DynamoDB (recommended for local dev). | `false` |
 | `DYNAMODB_TABLE` | DynamoDB table name when using DynamoDB storage. | `bff-hang` |
 | `APP_BASE_URL` | Public base URL used to render share links. | derived from request |
+| `DEV_RELOAD_TEMPLATES` | Reload HTML templates on every request (local dev helper). | `false` |
 
 ## AWS Lambda
 

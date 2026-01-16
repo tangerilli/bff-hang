@@ -98,9 +98,10 @@ type MemoryStorage struct {
 }
 
 type App struct {
-	storage   Storage
-	templates *template.Template
-	baseURL   string
+	storage         Storage
+	templates       *template.Template
+	baseURL         string
+	reloadTemplates bool
 }
 
 func main() {
@@ -109,14 +110,16 @@ func main() {
 		log.Fatalf("failed to initialize storage: %v", err)
 	}
 
-	templates := template.Must(template.New("").Funcs(template.FuncMap{
-		"formatDate": formatDate,
-	}).ParseFS(os.DirFS("."), "templates/*.html"))
+	templates, err := parseTemplates()
+	if err != nil {
+		log.Fatalf("failed to parse templates: %v", err)
+	}
 
 	app := &App{
-		storage:   storage,
-		templates: templates,
-		baseURL:   os.Getenv("APP_BASE_URL"),
+		storage:         storage,
+		templates:       templates,
+		baseURL:         os.Getenv("APP_BASE_URL"),
+		reloadTemplates: os.Getenv("DEV_RELOAD_TEMPLATES") == "true",
 	}
 
 	mux := http.NewServeMux()
@@ -455,7 +458,16 @@ func (a *App) buildPollView(r *http.Request, poll Poll, responses []Response, er
 
 func (a *App) render(w http.ResponseWriter, name string, data any) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := a.templates.ExecuteTemplate(w, name, data); err != nil {
+	tmpl := a.templates
+	if a.reloadTemplates {
+		loaded, err := parseTemplates()
+		if err != nil {
+			log.Printf("template reload failed: %v", err)
+		} else {
+			tmpl = loaded
+		}
+	}
+	if err := tmpl.ExecuteTemplate(w, name, data); err != nil {
 		log.Printf("template error: %v", err)
 	}
 }
@@ -514,6 +526,10 @@ func normalizeDays(input []string) []string {
 	return days
 }
 
+var templateFuncs = template.FuncMap{
+	"formatDate": formatDate,
+}
+
 func randomID() string {
 	buf := make([]byte, 16)
 	if _, err := rand.Read(buf); err != nil {
@@ -528,6 +544,10 @@ func formatDate(date string) string {
 		return date
 	}
 	return parsed.Format("Mon, Jan 2")
+}
+
+func parseTemplates() (*template.Template, error) {
+	return template.New("").Funcs(templateFuncs).ParseFS(os.DirFS("."), "templates/*.html")
 }
 
 func parseTime(value string) time.Time {

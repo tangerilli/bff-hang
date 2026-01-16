@@ -107,6 +107,8 @@ USE_MEMORY_STORE=true go run .
 
 App runs at <http://localhost:8080>.
 
+For local development, `DEV_RELOAD_TEMPLATES=true` reloads HTML templates on each request.
+
 ### AWS Lambda
 
 - Uses the Lambda HTTP adapter when `AWS_LAMBDA_FUNCTION_NAME` is set.
