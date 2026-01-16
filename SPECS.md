@@ -83,7 +83,7 @@ For each poll day, responses are aggregated into a list of names. A day is flagg
 
 ## Frontend behavior
 
-- Home page includes a creator name field and lists the next 14 days as checkbox options, with an "Add 14 more days" button.
+- Home page includes a creator name field and lists the next 14 days as checkbox options, with a "More days" button.
 - Poll page allows name entry and day selection.
 - Poll page includes a copy button for the share link.
 - Results table lists availability by day and highlights rows where everyone is free.

@@ -3,4 +3,4 @@
 - [x] On the homepage, at the bottom of the list of dates to choose from, add a button to add additional dates (if a user wants to select more than what's available by default). Each time the user clicks the button it should add an additional 14 days
 - [x] When creating a poll, add a field for the creator to set their name as well, so that they can be displayed in the list of people available for each day
 - [x] If possible, make the app hot-reload for local development, so that changes to at least the HTML files, and ideally the .go files, are picked up and incorporated without having to restart the server
-- [ ] Change the "Add 14 more days" copy to be just "More days"
+- [x] Change the "Add 14 more days" copy to be just "More days"
