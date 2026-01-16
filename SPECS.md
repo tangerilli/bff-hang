@@ -11,14 +11,21 @@ BFF Hang is a minimal polling app for coordinating hangouts. A poll creator sele
 1. User visits the homepage.
 2. User enters a poll title, their name, and selects all available days from the next 14 days, with the option to append more dates in 14-day blocks.
 3. Server creates a poll and redirects to the poll page.
-4. Poll page displays a shareable link with a one-click copy button and includes the creator in the availability list.
+4. Poll page displays a shareable link with a one-click copy button, redirects the creator to a user-specific URL, and includes the creator in the availability list.
 
 ### Respond to poll
 
 1. User opens a poll URL.
-2. User enters their name and selects available days.
-3. The poll summary updates (via HTMX) and highlights days that work for all respondents.
-4. Re-submitting with the same name updates the existing response.
+2. Server redirects them to a user-specific URL and stores a cookie for future visits.
+3. User enters their name and selects available days.
+4. The poll summary updates (via HTMX) and highlights days that work for all respondents.
+5. Re-submitting from the same user-specific URL updates the existing response and pre-fills selections.
+
+### Manage poll (creator)
+
+1. Creator visits their user-specific URL.
+2. Creator can delete responses from individual users.
+3. Creator can update the available dates and prune existing responses to match.
 
 ## Requirements (implemented)
 
@@ -56,6 +63,7 @@ BFF Hang is a minimal polling app for coordinating hangouts. A poll creator sele
 - `id` (random, base32-encoded)
 - `title`
 - `days` (YYYY-MM-DD strings)
+- `creator_token` (random, base32-encoded)
 - `created_at`
 
 **Response**
@@ -63,6 +71,7 @@ BFF Hang is a minimal polling app for coordinating hangouts. A poll creator sele
 - `id` (random, base32-encoded)
 - `name`
 - `days` (subset of poll days)
+- `user_token` (random, base32-encoded)
 - `created_at`
 
 ### Storage
@@ -72,7 +81,8 @@ BFF Hang is a minimal polling app for coordinating hangouts. A poll creator sele
 Single-table design using partition key `pk` and sort key `sk`:
 
 - Poll item: `pk = POLL#{id}`, `sk = POLL`, `type = poll`, plus title/days/timestamps.
-- Response items: `pk = POLL#{id}`, `sk = RESP#{response_id}`, `type = response`, plus name/days/timestamps.
+- Poll item includes `creator_token` for creator-only actions.
+- Response items: `pk = POLL#{id}`, `sk = RESP#{response_id}`, `type = response`, plus name/days/user token/timestamps.
 
 **Memory**
 
@@ -87,7 +97,9 @@ For each poll day, responses are aggregated into a list of names. A day is flagg
 - Home page includes a creator name field and lists the next 14 days as checkbox options, with a "More days" button.
 - Poll page allows name entry and day selection.
 - Poll page includes a copy button for the share link.
-- Submitting with the same name updates the existing response instead of adding a duplicate.
+- Poll page redirects visitors to user-specific URLs and stores a cookie to return them to the same link.
+- Submitting from the same user-specific URL updates the existing response instead of adding a duplicate.
+- Creator-only controls allow deleting responses and editing available dates.
 - Results table lists availability by day and highlights rows where everyone is free.
 - HTMX updates the results panel without full page reloads.
 

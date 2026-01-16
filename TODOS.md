@@ -5,3 +5,7 @@
 - [x] If possible, make the app hot-reload for local development, so that changes to at least the HTML files, and ideally the .go files, are picked up and incorporated without having to restart the server
 - [x] Change the "Add 14 more days" copy to be just "More days"
 - [x] Change the behaviour on the poll page so that after a user clicks "Save availability", they can change their availability and clicking "Save availability" again edits their previous selections, rather than adding a new entry
+- [x] When a user visits the poll page (even the poll creator) redirect them to a URL that is specific to them for that poll. Then, if they have already submitted their availability, the availability form should be pre-populated with the selections they made previously (so they can update/edit them). Basically, we want a user system, but without creating actual users, instead the "user" is based on the URL
+- [x] To continue improving on the last item, store a cookie in the users browser that links a poll id with their user-specific URL. Then, if a user visits the generic poll URL, they can be redirected to their user-specific URL automatically (as long as they're using the same browser they were previously using)
+- [x] When the poll creator visits their user-specific URL, give them the ability to delete the responses for a given user
+- [x] When the poll creator visits their user-specific URL, give them the ability to change the dates that are possible to select from

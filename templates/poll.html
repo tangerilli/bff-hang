@@ -205,6 +205,19 @@
         box-shadow: 0 0 0 4px rgba(255, 122, 89, 0.3);
       }
 
+      button.ghost-button {
+        background: rgba(255, 255, 255, 0.9);
+        color: #0f172a;
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        box-shadow: none;
+        padding: 0.6rem 1.1rem;
+        font-size: 0.85rem;
+      }
+
+      button.ghost-button:hover {
+        box-shadow: 0 12px 22px rgba(15, 23, 42, 0.12);
+      }
+
       button.copy-button {
         background: rgba(15, 23, 42, 0.9);
         color: #f8fafc;
@@ -223,6 +236,19 @@
         background: #1f9d8b;
         color: #042f2b;
         border-color: transparent;
+      }
+
+      button.danger-button {
+        background: #fee2e2;
+        color: #7f1d1d;
+        border: 1px solid #fecaca;
+        box-shadow: none;
+        padding: 0.5rem 0.9rem;
+        font-size: 0.8rem;
+      }
+
+      button.danger-button:hover {
+        box-shadow: 0 10px 18px rgba(127, 29, 29, 0.15);
       }
 
       .share-card {
@@ -329,10 +355,61 @@
         margin-bottom: 2rem;
       }
 
+      .manage-card {
+        margin-top: 2rem;
+      }
+
+      .manage-grid {
+        display: grid;
+        gap: 1.5rem;
+      }
+
+      .response-list {
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      .response-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.75rem 0.9rem;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.7);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+      }
+
+      .response-name {
+        font-weight: 600;
+        color: #0f172a;
+      }
+
+      .response-meta {
+        font-size: 0.8rem;
+        color: #64748b;
+        margin-top: 0.2rem;
+      }
+
+      .edit-form {
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      .edit-days {
+        display: grid;
+        gap: 0.75rem;
+      }
+
       @media (min-width: 960px) {
         .page-header {
           grid-template-columns: 1.2fr 0.8fr;
           align-items: center;
+        }
+
+        .manage-grid {
+          grid-template-columns: 1fr 1fr;
+          align-items: start;
         }
       }
 
@@ -367,10 +444,10 @@
       <div class="layout">
         <section class="card">
           <h2>Add your availability</h2>
-          <form method="post" action="/poll/{{.Poll.ID}}" hx-post="/poll/{{.Poll.ID}}" hx-target="#poll-results" hx-swap="outerHTML" class="stack">
+          <form method="post" action="/poll/{{.Poll.ID}}/u/{{.ViewerToken}}" hx-post="/poll/{{.Poll.ID}}/u/{{.ViewerToken}}" hx-target="#poll-results" hx-swap="outerHTML" class="stack">
             <div class="field">
               <label for="name">Your name</label>
-              <input id="name" name="name" type="text" placeholder="Taylor" required />
+              <input id="name" name="name" type="text" placeholder="Taylor" value="{{.ViewerName}}" required />
             </div>
 
             <div class="field">
@@ -378,7 +455,7 @@
               <div class="days-grid">
                 {{range .Poll.Days}}
                   <label class="day-option">
-                    <input type="checkbox" name="days" value="{{.}}" />
+                    <input type="checkbox" name="days" value="{{.}}" {{if index $.SelectedDays .}}checked{{end}} />
                     <span>{{formatDate .}}</span>
                   </label>
                 {{end}}
@@ -393,6 +470,58 @@
 
         {{template "results.html" .}}
       </div>
+
+      {{if .IsCreator}}
+        <section class="card manage-card">
+          <h2>Manage poll</h2>
+          <div class="manage-grid">
+            <div>
+              <h3>Responses</h3>
+              {{if .Responses}}
+                <div class="response-list">
+                  {{range .Responses}}
+                    <div class="response-row">
+                      <div>
+                        <div class="response-name">{{.Name}}</div>
+                        <div class="response-meta">{{len .Days}} days selected</div>
+                      </div>
+                      <form method="post" action="/poll/{{$.Poll.ID}}/u/{{$.ViewerToken}}">
+                        <input type="hidden" name="action" value="delete-response" />
+                        <input type="hidden" name="response_id" value="{{.ID}}" />
+                        <button type="submit" class="danger-button">Delete</button>
+                      </form>
+                    </div>
+                  {{end}}
+                </div>
+              {{else}}
+                <p class="hint">No responses yet.</p>
+              {{end}}
+            </div>
+
+            <div>
+              <h3>Edit available dates</h3>
+              <form method="post" action="/poll/{{$.Poll.ID}}/u/{{$.ViewerToken}}" class="edit-form">
+                <input type="hidden" name="action" value="update-dates" />
+                <div class="days-grid" id="edit-days-grid">
+                  {{range .Poll.Days}}
+                    <label class="day-option">
+                      <input type="checkbox" name="days" value="{{.}}" checked />
+                      <span>{{formatDate .}}</span>
+                    </label>
+                  {{end}}
+                </div>
+                <div class="edit-days">
+                  <button type="button" class="ghost-button" id="edit-more-days">More days</button>
+                  <p class="hint">Uncheck to remove dates. Add more in two-week blocks.</p>
+                </div>
+                <div>
+                  <button type="submit">Update dates</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </section>
+      {{end}}
     </div>
     <script>
       const copyButton = document.getElementById("copy-link");
@@ -438,6 +567,54 @@
             }
           }
           fallbackCopy(text);
+        });
+      }
+    </script>
+    <script>
+      const editMoreButton = document.getElementById("edit-more-days");
+      const editDaysGrid = document.getElementById("edit-days-grid");
+
+      if (editMoreButton && editDaysGrid) {
+        const formatter = new Intl.DateTimeFormat("en-US", {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          timeZone: "UTC",
+        });
+
+        const parseDate = (value) => {
+          const parts = value.split("-").map(Number);
+          return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+        };
+
+        const formatValue = (date) => date.toISOString().slice(0, 10);
+
+        const createOption = (date) => {
+          const label = document.createElement("label");
+          label.className = "day-option";
+
+          const input = document.createElement("input");
+          input.type = "checkbox";
+          input.name = "days";
+          input.value = formatValue(date);
+
+          const text = document.createElement("span");
+          text.textContent = formatter.format(date);
+
+          label.append(input, text);
+          return label;
+        };
+
+        editMoreButton.addEventListener("click", () => {
+          const inputs = editDaysGrid.querySelectorAll('input[name="days"]');
+          if (inputs.length === 0) {
+            return;
+          }
+          let cursor = parseDate(inputs[inputs.length - 1].value);
+          for (let i = 0; i < 14; i++) {
+            cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth(), cursor.getUTCDate() + 1));
+            editDaysGrid.appendChild(createOption(cursor));
+          }
         });
       }
     </script>

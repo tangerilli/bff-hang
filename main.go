@@ -30,19 +30,23 @@ type Storage interface {
 	CreatePoll(ctx context.Context, poll Poll) error
 	GetPoll(ctx context.Context, pollID string) (Poll, []Response, error)
 	AddResponse(ctx context.Context, pollID string, response Response) error
+	UpdatePollDays(ctx context.Context, pollID string, days []string) error
+	DeleteResponse(ctx context.Context, pollID string, responseID string) error
 }
 
 type Poll struct {
-	ID        string
-	Title     string
-	Days      []string
-	CreatedAt time.Time
+	ID           string
+	Title        string
+	Days         []string
+	CreatorToken string
+	CreatedAt    time.Time
 }
 
 type Response struct {
 	ID        string
 	Name      string
 	Days      []string
+	UserToken string
 	CreatedAt time.Time
 }
 
@@ -65,6 +69,10 @@ type PollView struct {
 	TotalResponse int
 	Error         string
 	ShareURL      string
+	ViewerToken   string
+	ViewerName    string
+	SelectedDays  map[string]bool
+	IsCreator     bool
 }
 
 type DynamoDBStorage struct {
@@ -73,13 +81,14 @@ type DynamoDBStorage struct {
 }
 
 type PollItem struct {
-	PK        string   `dynamodbav:"pk"`
-	SK        string   `dynamodbav:"sk"`
-	Type      string   `dynamodbav:"type"`
-	ID        string   `dynamodbav:"id"`
-	Title     string   `dynamodbav:"title"`
-	Days      []string `dynamodbav:"days"`
-	CreatedAt string   `dynamodbav:"created_at"`
+	PK           string   `dynamodbav:"pk"`
+	SK           string   `dynamodbav:"sk"`
+	Type         string   `dynamodbav:"type"`
+	ID           string   `dynamodbav:"id"`
+	Title        string   `dynamodbav:"title"`
+	Days         []string `dynamodbav:"days"`
+	CreatorToken string   `dynamodbav:"creator_token"`
+	CreatedAt    string   `dynamodbav:"created_at"`
 }
 
 type ResponseItem struct {
@@ -89,6 +98,7 @@ type ResponseItem struct {
 	ID        string   `dynamodbav:"id"`
 	Name      string   `dynamodbav:"name"`
 	Days      []string `dynamodbav:"days"`
+	UserToken string   `dynamodbav:"user_token"`
 	CreatedAt string   `dynamodbav:"created_at"`
 }
 
@@ -167,13 +177,14 @@ func newStorage(ctx context.Context) (Storage, error) {
 
 func (s *DynamoDBStorage) CreatePoll(ctx context.Context, poll Poll) error {
 	item := PollItem{
-		PK:        pollPartitionKey(poll.ID),
-		SK:        "POLL",
-		Type:      "poll",
-		ID:        poll.ID,
-		Title:     poll.Title,
-		Days:      poll.Days,
-		CreatedAt: poll.CreatedAt.Format(time.RFC3339),
+		PK:           pollPartitionKey(poll.ID),
+		SK:           "POLL",
+		Type:         "poll",
+		ID:           poll.ID,
+		Title:        poll.Title,
+		Days:         poll.Days,
+		CreatorToken: poll.CreatorToken,
+		CreatedAt:    poll.CreatedAt.Format(time.RFC3339),
 	}
 
 	av, err := attributevalue.MarshalMap(item)
@@ -221,10 +232,11 @@ func (s *DynamoDBStorage) GetPoll(ctx context.Context, pollID string) (Poll, []R
 				return Poll{}, nil, err
 			}
 			poll = Poll{
-				ID:        pollItem.ID,
-				Title:     pollItem.Title,
-				Days:      pollItem.Days,
-				CreatedAt: parseTime(pollItem.CreatedAt),
+				ID:           pollItem.ID,
+				Title:        pollItem.Title,
+				Days:         pollItem.Days,
+				CreatorToken: pollItem.CreatorToken,
+				CreatedAt:    parseTime(pollItem.CreatedAt),
 			}
 		case "response":
 			var respItem ResponseItem
@@ -235,6 +247,7 @@ func (s *DynamoDBStorage) GetPoll(ctx context.Context, pollID string) (Poll, []R
 				ID:        respItem.ID,
 				Name:      respItem.Name,
 				Days:      respItem.Days,
+				UserToken: respItem.UserToken,
 				CreatedAt: parseTime(respItem.CreatedAt),
 			})
 		}
@@ -259,6 +272,7 @@ func (s *DynamoDBStorage) AddResponse(ctx context.Context, pollID string, respon
 		ID:        response.ID,
 		Name:      response.Name,
 		Days:      response.Days,
+		UserToken: response.UserToken,
 		CreatedAt: response.CreatedAt.Format(time.RFC3339),
 	}
 	av, err := attributevalue.MarshalMap(item)
@@ -268,6 +282,32 @@ func (s *DynamoDBStorage) AddResponse(ctx context.Context, pollID string, respon
 	_, err = s.client.PutItem(ctx, &dynamodb.PutItemInput{
 		TableName: &s.Table,
 		Item:      av,
+	})
+	return err
+}
+
+func (s *DynamoDBStorage) UpdatePollDays(ctx context.Context, pollID string, days []string) error {
+	_, err := s.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: &s.Table,
+		Key: map[string]types.AttributeValue{
+			"pk": &types.AttributeValueMemberS{Value: pollPartitionKey(pollID)},
+			"sk": &types.AttributeValueMemberS{Value: "POLL"},
+		},
+		UpdateExpression: awsString("SET days = :days"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":days": &types.AttributeValueMemberL{Value: stringSliceAttribute(days)},
+		},
+	})
+	return err
+}
+
+func (s *DynamoDBStorage) DeleteResponse(ctx context.Context, pollID string, responseID string) error {
+	_, err := s.client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
+		TableName: &s.Table,
+		Key: map[string]types.AttributeValue{
+			"pk": &types.AttributeValueMemberS{Value: pollPartitionKey(pollID)},
+			"sk": &types.AttributeValueMemberS{Value: "RESP#" + responseID},
+		},
 	})
 	return err
 }
@@ -308,6 +348,30 @@ func (s *MemoryStorage) AddResponse(ctx context.Context, pollID string, response
 	return nil
 }
 
+func (s *MemoryStorage) UpdatePollDays(ctx context.Context, pollID string, days []string) error {
+	poll, ok := s.polls[pollID]
+	if !ok {
+		return errNotFound
+	}
+	poll.Days = days
+	s.polls[pollID] = poll
+	return nil
+}
+
+func (s *MemoryStorage) DeleteResponse(ctx context.Context, pollID string, responseID string) error {
+	if _, ok := s.polls[pollID]; !ok {
+		return errNotFound
+	}
+	responses := s.responses[pollID]
+	for i := range responses {
+		if responses[i].ID == responseID {
+			s.responses[pollID] = append(responses[:i], responses[i+1:]...)
+			return nil
+		}
+	}
+	return nil
+}
+
 func (a *App) handleHome(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -341,11 +405,13 @@ func (a *App) handleCreatePoll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	creatorToken := randomID()
 	poll := Poll{
-		ID:        randomID(),
-		Title:     title,
-		Days:      selectedDays,
-		CreatedAt: time.Now().UTC(),
+		ID:           randomID(),
+		Title:        title,
+		Days:         selectedDays,
+		CreatorToken: creatorToken,
+		CreatedAt:    time.Now().UTC(),
 	}
 
 	if err := a.storage.CreatePoll(r.Context(), poll); err != nil {
@@ -358,6 +424,7 @@ func (a *App) handleCreatePoll(w http.ResponseWriter, r *http.Request) {
 		ID:        randomID(),
 		Name:      creator,
 		Days:      selectedDays,
+		UserToken: creatorToken,
 		CreatedAt: time.Now().UTC(),
 	}
 	if err := a.storage.AddResponse(r.Context(), poll.ID, creatorResponse); err != nil {
@@ -366,19 +433,31 @@ func (a *App) handleCreatePoll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/poll/"+poll.ID, http.StatusSeeOther)
+	setUserTokenCookie(w, r, poll.ID, creatorToken)
+	http.Redirect(w, r, fmt.Sprintf("/poll/%s/u/%s", poll.ID, creatorToken), http.StatusSeeOther)
 }
 
 func (a *App) handlePoll(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/poll/")
-	if id == "" {
+	pollID, userToken := parsePollPath(r.URL.Path)
+	if pollID == "" {
 		http.NotFound(w, r)
 		return
 	}
 
 	switch r.Method {
 	case http.MethodGet:
-		poll, responses, err := a.storage.GetPoll(r.Context(), id)
+		if userToken == "" {
+			token := userTokenFromCookie(r, pollID)
+			if token == "" {
+				token = randomID()
+				setUserTokenCookie(w, r, pollID, token)
+			}
+			http.Redirect(w, r, fmt.Sprintf("/poll/%s/u/%s", pollID, token), http.StatusSeeOther)
+			return
+		}
+
+		setUserTokenCookie(w, r, pollID, userToken)
+		poll, responses, err := a.storage.GetPoll(r.Context(), pollID)
 		if err != nil {
 			if errors.Is(err, errNotFound) {
 				http.NotFound(w, r)
@@ -389,27 +468,81 @@ func (a *App) handlePoll(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		view := a.buildPollView(r, poll, responses, "")
+		view := a.buildPollView(r, poll, responses, "", userToken)
 		a.render(w, "poll.html", view)
 	case http.MethodPost:
+		if userToken == "" {
+			http.Redirect(w, r, "/poll/"+pollID, http.StatusSeeOther)
+			return
+		}
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "invalid form", http.StatusBadRequest)
 			return
 		}
-		name := strings.TrimSpace(r.FormValue("name"))
-		selectedDays := normalizeDays(r.Form["days"])
-		if name == "" || len(selectedDays) == 0 {
-			poll, responses, err := a.storage.GetPoll(r.Context(), id)
-			if err != nil {
-				if errors.Is(err, errNotFound) {
-					http.NotFound(w, r)
-					return
-				}
-				log.Printf("failed to load poll: %v", err)
-				http.Error(w, "unable to load poll", http.StatusInternalServerError)
+		poll, responses, err := a.storage.GetPoll(r.Context(), pollID)
+		if err != nil {
+			if errors.Is(err, errNotFound) {
+				http.NotFound(w, r)
 				return
 			}
-			view := a.buildPollView(r, poll, responses, "Please enter your name and at least one available day.")
+			log.Printf("failed to load poll: %v", err)
+			http.Error(w, "unable to load poll", http.StatusInternalServerError)
+			return
+		}
+
+		if action := r.FormValue("action"); action != "" {
+			if !isCreator(poll, userToken) {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+			switch action {
+			case "delete-response":
+				responseID := strings.TrimSpace(r.FormValue("response_id"))
+				if responseID == "" {
+					http.Error(w, "missing response", http.StatusBadRequest)
+					return
+				}
+				if err := a.storage.DeleteResponse(r.Context(), pollID, responseID); err != nil {
+					log.Printf("failed to delete response: %v", err)
+					http.Error(w, "unable to delete response", http.StatusInternalServerError)
+					return
+				}
+				http.Redirect(w, r, fmt.Sprintf("/poll/%s/u/%s", pollID, userToken), http.StatusSeeOther)
+				return
+			case "update-dates":
+				updatedDays := normalizeDays(r.Form["days"])
+				if len(updatedDays) == 0 {
+					http.Error(w, "at least one day is required", http.StatusBadRequest)
+					return
+				}
+				if err := a.storage.UpdatePollDays(r.Context(), pollID, updatedDays); err != nil {
+					log.Printf("failed to update poll days: %v", err)
+					http.Error(w, "unable to update poll", http.StatusInternalServerError)
+					return
+				}
+				for _, response := range responses {
+					filtered := filterDays(response.Days, updatedDays)
+					if !equalDays(response.Days, filtered) {
+						response.Days = filtered
+						if err := a.storage.AddResponse(r.Context(), pollID, response); err != nil {
+							log.Printf("failed to update response days: %v", err)
+							http.Error(w, "unable to update poll", http.StatusInternalServerError)
+							return
+						}
+					}
+				}
+				http.Redirect(w, r, fmt.Sprintf("/poll/%s/u/%s", pollID, userToken), http.StatusSeeOther)
+				return
+			default:
+				http.Error(w, "unknown action", http.StatusBadRequest)
+				return
+			}
+		}
+
+		name := strings.TrimSpace(r.FormValue("name"))
+		selectedDays := filterDays(normalizeDays(r.Form["days"]), poll.Days)
+		if name == "" || len(selectedDays) == 0 {
+			view := a.buildPollView(r, poll, responses, "Please enter your name and at least one available day.", userToken)
 			if isHTMX(r) {
 				w.WriteHeader(http.StatusBadRequest)
 				a.render(w, "results.html", view)
@@ -419,40 +552,30 @@ func (a *App) handlePoll(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		poll, responses, err := a.storage.GetPoll(r.Context(), id)
-		if err != nil {
-			if errors.Is(err, errNotFound) {
-				http.NotFound(w, r)
-				return
-			}
-			log.Printf("failed to load poll: %v", err)
-			http.Error(w, "unable to load poll", http.StatusInternalServerError)
-			return
-		}
-
 		response := Response{
 			ID:        randomID(),
 			Name:      name,
 			Days:      selectedDays,
+			UserToken: userToken,
 			CreatedAt: time.Now().UTC(),
 		}
-		if existing := findResponseByName(responses, name); existing != nil {
+		if existing := findResponseByToken(responses, userToken); existing != nil {
 			response.ID = existing.ID
 			response.CreatedAt = existing.CreatedAt
 		}
-		if err := a.storage.AddResponse(r.Context(), id, response); err != nil {
+		if err := a.storage.AddResponse(r.Context(), pollID, response); err != nil {
 			log.Printf("failed to add response: %v", err)
 			http.Error(w, "unable to save response", http.StatusInternalServerError)
 			return
 		}
 
-		poll, responses, err = a.storage.GetPoll(r.Context(), id)
+		poll, responses, err = a.storage.GetPoll(r.Context(), pollID)
 		if err != nil {
 			log.Printf("failed to reload poll: %v", err)
 			http.Error(w, "unable to load poll", http.StatusInternalServerError)
 			return
 		}
-		view := a.buildPollView(r, poll, responses, "")
+		view := a.buildPollView(r, poll, responses, "", userToken)
 		if isHTMX(r) {
 			a.render(w, "results.html", view)
 			return
@@ -463,12 +586,26 @@ func (a *App) handlePoll(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (a *App) buildPollView(r *http.Request, poll Poll, responses []Response, errMsg string) PollView {
+func (a *App) buildPollView(r *http.Request, poll Poll, responses []Response, errMsg string, viewerToken string) PollView {
 	summaries := summarizeAvailability(poll.Days, responses)
 	baseURL := a.baseURL
 	if baseURL == "" {
 		baseURL = fmt.Sprintf("%s://%s", schemeForRequest(r), r.Host)
 	}
+	selectedDays := make(map[string]bool)
+	viewerName := ""
+	if viewerToken != "" {
+		if response := findResponseByToken(responses, viewerToken); response != nil {
+			viewerName = response.Name
+			daySet := makeDaySet(poll.Days)
+			for _, day := range response.Days {
+				if daySet[day] {
+					selectedDays[day] = true
+				}
+			}
+		}
+	}
+
 	return PollView{
 		Poll:          poll,
 		Responses:     responses,
@@ -476,6 +613,10 @@ func (a *App) buildPollView(r *http.Request, poll Poll, responses []Response, er
 		TotalResponse: len(responses),
 		Error:         errMsg,
 		ShareURL:      fmt.Sprintf("%s/poll/%s", strings.TrimRight(baseURL, "/"), poll.ID),
+		ViewerToken:   viewerToken,
+		ViewerName:    viewerName,
+		SelectedDays:  selectedDays,
+		IsCreator:     isCreator(poll, viewerToken),
 	}
 }
 
@@ -553,14 +694,51 @@ var templateFuncs = template.FuncMap{
 	"formatDate": formatDate,
 }
 
-func findResponseByName(responses []Response, name string) *Response {
-	target := strings.ToLower(strings.TrimSpace(name))
+func findResponseByToken(responses []Response, token string) *Response {
+	target := strings.TrimSpace(token)
+	if target == "" {
+		return nil
+	}
 	for i := range responses {
-		if strings.ToLower(strings.TrimSpace(responses[i].Name)) == target {
+		if strings.TrimSpace(responses[i].UserToken) == target {
 			return &responses[i]
 		}
 	}
 	return nil
+}
+
+func makeDaySet(days []string) map[string]bool {
+	set := make(map[string]bool, len(days))
+	for _, day := range days {
+		set[day] = true
+	}
+	return set
+}
+
+func filterDays(selected []string, allowed []string) []string {
+	if len(selected) == 0 {
+		return selected
+	}
+	allowedSet := makeDaySet(allowed)
+	filtered := make([]string, 0, len(selected))
+	for _, day := range selected {
+		if allowedSet[day] {
+			filtered = append(filtered, day)
+		}
+	}
+	return filtered
+}
+
+func equalDays(a []string, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func randomID() string {
@@ -591,12 +769,31 @@ func parseTime(value string) time.Time {
 	return parsed
 }
 
+func parsePollPath(path string) (string, string) {
+	trimmed := strings.TrimPrefix(path, "/poll/")
+	if trimmed == "" || trimmed == path {
+		return "", ""
+	}
+	parts := strings.Split(trimmed, "/")
+	if len(parts) == 1 {
+		return parts[0], ""
+	}
+	if len(parts) >= 3 && parts[1] == "u" {
+		return parts[0], parts[2]
+	}
+	return parts[0], ""
+}
+
 func pollPartitionKey(id string) string {
 	return "POLL#" + id
 }
 
 func isHTMX(r *http.Request) bool {
 	return r.Header.Get("HX-Request") == "true"
+}
+
+func isCreator(poll Poll, token string) bool {
+	return poll.CreatorToken != "" && poll.CreatorToken == token
 }
 
 func schemeForRequest(r *http.Request) string {
@@ -609,8 +806,43 @@ func schemeForRequest(r *http.Request) string {
 	return "http"
 }
 
+func pollCookieName(pollID string) string {
+	return "bffhang_" + pollID
+}
+
+func userTokenFromCookie(r *http.Request, pollID string) string {
+	cookie, err := r.Cookie(pollCookieName(pollID))
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(cookie.Value)
+}
+
+func setUserTokenCookie(w http.ResponseWriter, r *http.Request, pollID string, token string) {
+	if token == "" {
+		return
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     pollCookieName(pollID),
+		Value:    token,
+		Path:     "/poll/" + pollID,
+		MaxAge:   60 * 60 * 24 * 365,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   schemeForRequest(r) == "https",
+	})
+}
+
 func awsString(value string) *string {
 	return &value
+}
+
+func stringSliceAttribute(values []string) []types.AttributeValue {
+	attrs := make([]types.AttributeValue, 0, len(values))
+	for _, value := range values {
+		attrs = append(attrs, &types.AttributeValueMemberS{Value: value})
+	}
+	return attrs
 }
 
 var (
