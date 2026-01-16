@@ -144,7 +144,7 @@ func main() {
 	mux.HandleFunc("/poll/", app.handlePoll)
 
 	if os.Getenv("AWS_LAMBDA_FUNCTION_NAME") != "" {
-		adapter := httpadapter.New(mux)
+		adapter := httpadapter.NewV2(mux)
 		lambda.Start(adapter.ProxyWithContext)
 		return
 	}
