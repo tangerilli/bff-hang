@@ -9,9 +9,9 @@ BFF Hang is a minimal polling app for coordinating hangouts. A poll creator sele
 ### Create poll
 
 1. User visits the homepage.
-2. User enters a poll title and selects all available days from the next 14 days.
+2. User enters a poll title and selects all available days from the next 14 days, with the option to append more dates in 14-day blocks.
 3. Server creates a poll and redirects to the poll page.
-4. Poll page displays a shareable link for friends.
+4. Poll page displays a shareable link with a one-click copy button.
 
 ### Respond to poll
 
@@ -83,8 +83,9 @@ For each poll day, responses are aggregated into a list of names. A day is flagg
 
 ## Frontend behavior
 
-- Home page lists the next 14 days as checkbox options.
+- Home page lists the next 14 days as checkbox options, with an "Add 14 more days" button.
 - Poll page allows name entry and day selection.
+- Poll page includes a copy button for the share link.
 - Results table lists availability by day and highlights rows where everyone is free.
 - HTMX updates the results panel without full page reloads.
 
@@ -133,7 +134,7 @@ Packaging and deployment steps are documented in `README.md`.
 ## Future improvements
 
 - Add CSRF protection and spam prevention.
-- Allow organizers to add custom date ranges.
+- Allow organizers to set custom date ranges beyond 14-day increments.
 - Provide poll closing or locking options.
 - Add a lightweight UI to show who selected which days per respondent.
 - Add response deletion or editing via unique response links.

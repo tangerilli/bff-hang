@@ -1,0 +1,3 @@
+- [x] Add a "copy" button to the share link, allowing users to click and have the link added to their clipboard
+- [x] Change the "Only days matter for this poll. Pick every day you are free" copy to just read "Pick every day you are free"
+- [x] On the homepage, at the bottom of the list of dates to choose from, add a button to add additional dates (if a user wants to select more than what's available by default). Each time the user clicks the button it should add an additional 14 days

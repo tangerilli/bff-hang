@@ -205,6 +205,26 @@
         box-shadow: 0 0 0 4px rgba(255, 122, 89, 0.3);
       }
 
+      button.copy-button {
+        background: rgba(15, 23, 42, 0.9);
+        color: #f8fafc;
+        border: 1px solid rgba(148, 163, 184, 0.3);
+        box-shadow: none;
+        padding: 0.6rem 1.1rem;
+        font-size: 0.85rem;
+        justify-self: start;
+      }
+
+      button.copy-button:hover {
+        box-shadow: 0 12px 22px rgba(15, 23, 42, 0.18);
+      }
+
+      button.copy-button.is-copied {
+        background: #1f9d8b;
+        color: #042f2b;
+        border-color: transparent;
+      }
+
       .share-card {
         display: grid;
         gap: 0.5rem;
@@ -339,7 +359,8 @@
         </div>
         <div class="share-card">
           <span class="share-label">Share link</span>
-          <div class="share">{{.ShareURL}}</div>
+          <div class="share" id="share-link">{{.ShareURL}}</div>
+          <button type="button" class="copy-button" id="copy-link">Copy link</button>
         </div>
       </header>
 
@@ -373,5 +394,52 @@
         {{template "results.html" .}}
       </div>
     </div>
+    <script>
+      const copyButton = document.getElementById("copy-link");
+      const shareLink = document.getElementById("share-link");
+
+      if (copyButton && shareLink) {
+        const defaultLabel = copyButton.textContent;
+
+        const setCopiedState = () => {
+          copyButton.classList.add("is-copied");
+          copyButton.textContent = "Copied!";
+          window.setTimeout(() => {
+            copyButton.classList.remove("is-copied");
+            copyButton.textContent = defaultLabel;
+          }, 1600);
+        };
+
+        const fallbackCopy = (text) => {
+          const textarea = document.createElement("textarea");
+          textarea.value = text;
+          textarea.style.position = "fixed";
+          textarea.style.left = "-9999px";
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand("copy");
+          document.body.removeChild(textarea);
+          setCopiedState();
+        };
+
+        copyButton.addEventListener("click", async () => {
+          const text = shareLink.textContent.trim();
+          if (!text) {
+            return;
+          }
+          if (navigator.clipboard && window.isSecureContext) {
+            try {
+              await navigator.clipboard.writeText(text);
+              setCopiedState();
+              return;
+            } catch (err) {
+              fallbackCopy(text);
+              return;
+            }
+          }
+          fallbackCopy(text);
+        });
+      }
+    </script>
   </body>
 </html>
