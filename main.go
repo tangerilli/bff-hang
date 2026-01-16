@@ -73,6 +73,8 @@ type PollView struct {
 	ViewerName    string
 	SelectedDays  map[string]bool
 	IsCreator     bool
+	EditDays      []DayOption
+	PollDaySet    map[string]bool
 }
 
 type DynamoDBStorage struct {
@@ -380,8 +382,10 @@ func (a *App) handleHome(w http.ResponseWriter, r *http.Request) {
 
 	data := struct {
 		Upcoming []DayOption
+		Message  string
 	}{
 		Upcoming: upcomingDays(14),
+		Message:  homeMessage(r),
 	}
 
 	a.render(w, "home.html", data)
@@ -460,7 +464,7 @@ func (a *App) handlePoll(w http.ResponseWriter, r *http.Request) {
 		poll, responses, err := a.storage.GetPoll(r.Context(), pollID)
 		if err != nil {
 			if errors.Is(err, errNotFound) {
-				http.NotFound(w, r)
+				http.Redirect(w, r, "/?invalid=1", http.StatusSeeOther)
 				return
 			}
 			log.Printf("failed to load poll: %v", err)
@@ -482,7 +486,7 @@ func (a *App) handlePoll(w http.ResponseWriter, r *http.Request) {
 		poll, responses, err := a.storage.GetPoll(r.Context(), pollID)
 		if err != nil {
 			if errors.Is(err, errNotFound) {
-				http.NotFound(w, r)
+				http.Redirect(w, r, "/?invalid=1", http.StatusSeeOther)
 				return
 			}
 			log.Printf("failed to load poll: %v", err)
@@ -594,12 +598,12 @@ func (a *App) buildPollView(r *http.Request, poll Poll, responses []Response, er
 	}
 	selectedDays := make(map[string]bool)
 	viewerName := ""
+	pollDaySet := makeDaySet(poll.Days)
 	if viewerToken != "" {
 		if response := findResponseByToken(responses, viewerToken); response != nil {
 			viewerName = response.Name
-			daySet := makeDaySet(poll.Days)
 			for _, day := range response.Days {
-				if daySet[day] {
+				if pollDaySet[day] {
 					selectedDays[day] = true
 				}
 			}
@@ -617,6 +621,8 @@ func (a *App) buildPollView(r *http.Request, poll Poll, responses []Response, er
 		ViewerName:    viewerName,
 		SelectedDays:  selectedDays,
 		IsCreator:     isCreator(poll, viewerToken),
+		EditDays:      pollEditDays(poll.Days),
+		PollDaySet:    pollDaySet,
 	}
 }
 
@@ -661,6 +667,11 @@ func summarizeAvailability(days []string, responses []Response) []DaySummary {
 
 func upcomingDays(count int) []DayOption {
 	start := time.Now().UTC()
+	return upcomingDaysFrom(start, count)
+}
+
+func upcomingDaysFrom(start time.Time, count int) []DayOption {
+	start = startOfDayUTC(start)
 	options := make([]DayOption, 0, count)
 	for i := 0; i < count; i++ {
 		day := start.AddDate(0, 0, i)
@@ -741,6 +752,33 @@ func equalDays(a []string, b []string) bool {
 	return true
 }
 
+func pollEditDays(days []string) []DayOption {
+	start := startOfDayUTC(time.Now().UTC())
+	maxDay := start
+	for _, day := range days {
+		parsed, err := time.Parse("2006-01-02", day)
+		if err != nil {
+			continue
+		}
+		parsed = startOfDayUTC(parsed)
+		if parsed.After(maxDay) {
+			maxDay = parsed
+		}
+	}
+	count := 14
+	if maxDay.After(start.AddDate(0, 0, count-1)) {
+		diff := int(maxDay.Sub(start).Hours()/24) + 1
+		if diff > count {
+			count = diff
+		}
+	}
+	return upcomingDaysFrom(start, count)
+}
+
+func startOfDayUTC(value time.Time) time.Time {
+	return time.Date(value.Year(), value.Month(), value.Day(), 0, 0, 0, 0, time.UTC)
+}
+
 func randomID() string {
 	buf := make([]byte, 16)
 	if _, err := rand.Read(buf); err != nil {
@@ -767,6 +805,13 @@ func parseTime(value string) time.Time {
 		return time.Now().UTC()
 	}
 	return parsed
+}
+
+func homeMessage(r *http.Request) string {
+	if r.URL.Query().Get("invalid") == "1" {
+		return "That link was invalid. Start a new poll below."
+	}
+	return ""
 }
 
 func parsePollPath(path string) (string, string) {

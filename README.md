@@ -8,6 +8,7 @@ Highlights:
 - Creator is included in the availability list right away.
 - Re-submitting from the same user link updates availability instead of adding a duplicate.
 - Per-user poll URLs with cookie-based redirect and prefilled selections.
+- Invalid poll links return you to the homepage with a friendly message.
 - See availability update live with HTMX.
 
 ## Requirements

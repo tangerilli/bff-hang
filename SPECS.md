@@ -16,7 +16,7 @@ BFF Hang is a minimal polling app for coordinating hangouts. A poll creator sele
 ### Respond to poll
 
 1. User opens a poll URL.
-2. Server redirects them to a user-specific URL and stores a cookie for future visits.
+2. Server redirects them to a user-specific URL and stores a cookie for future visits. Invalid poll links redirect to the homepage with an error message.
 3. User enters their name and selects available days.
 4. The poll summary updates (via HTMX) and highlights days that work for all respondents.
 5. Re-submitting from the same user-specific URL updates the existing response and pre-fills selections.
@@ -25,7 +25,7 @@ BFF Hang is a minimal polling app for coordinating hangouts. A poll creator sele
 
 1. Creator visits their user-specific URL.
 2. Creator can delete responses from individual users.
-3. Creator can update the available dates and prune existing responses to match.
+3. Creator can update the available dates from a full list of upcoming days and prune existing responses to match.
 
 ## Requirements (implemented)
 
@@ -100,6 +100,7 @@ For each poll day, responses are aggregated into a list of names. A day is flagg
 - Poll page redirects visitors to user-specific URLs and stores a cookie to return them to the same link.
 - Submitting from the same user-specific URL updates the existing response instead of adding a duplicate.
 - Creator-only controls allow deleting responses and editing available dates.
+- Invalid poll links redirect to the homepage and show an error banner.
 - Results table lists availability by day and highlights rows where everyone is free.
 - HTMX updates the results panel without full page reloads.
 

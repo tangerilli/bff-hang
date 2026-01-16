@@ -9,3 +9,7 @@
 - [x] To continue improving on the last item, store a cookie in the users browser that links a poll id with their user-specific URL. Then, if a user visits the generic poll URL, they can be redirected to their user-specific URL automatically (as long as they're using the same browser they were previously using)
 - [x] When the poll creator visits their user-specific URL, give them the ability to delete the responses for a given user
 - [x] When the poll creator visits their user-specific URL, give them the ability to change the dates that are possible to select from
+- [x] The "BFF Hang" text in the top left corner of the poll page should be a link to the apps homepage
+- [x] The "Share this link so friends can respond." text is in the wrong place, it should be above the "Share Link" box, but right now it's over on the left hand side of the page, not particularly close to the "Share Link" box
+- [x] If a user visits an invalid poll URL, instead of an empty 404 page, they should be redirected to the homepage, with a message at the top saying that the link they followed was invalid
+- [x] When editing available dates as the poll creator, right now it only displays the dates that are selected (with an option to add 14 more days after). It should instead display all dates (i.e. the same list of dates as on the homepage when creating a new poll) so that you can add dates in between the ones that are already selected
