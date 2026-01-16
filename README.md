@@ -23,7 +23,7 @@ Highlights:
    USE_MEMORY_STORE=true go run .
    ```
 
-   For live template reloads in local dev, add `DEV_RELOAD_TEMPLATES=true`.
+   Templates are embedded into the binary for Lambda. For live template reloads in local dev, add `DEV_RELOAD_TEMPLATES=true`.
    If you want Go hot reload, run a watcher like `air` (if installed).
 
 2. Open the app at <http://localhost:8080>.

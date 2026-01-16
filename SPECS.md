@@ -122,7 +122,7 @@ USE_MEMORY_STORE=true go run .
 
 App runs at <http://localhost:8080>.
 
-For local development, `DEV_RELOAD_TEMPLATES=true` reloads HTML templates on each request.
+For local development, `DEV_RELOAD_TEMPLATES=true` reloads HTML templates on each request (templates are embedded for Lambda deploys).
 
 ### AWS Lambda
 

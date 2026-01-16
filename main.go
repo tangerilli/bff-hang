@@ -6,6 +6,7 @@ import (
 	"encoding/base32"
 	"errors"
 	"fmt"
+	"embed"
 	"html/template"
 	"log"
 	"net/http"
@@ -115,6 +116,9 @@ type App struct {
 	baseURL         string
 	reloadTemplates bool
 }
+
+//go:embed templates/*.html
+var embeddedTemplates embed.FS
 
 func main() {
 	storage, err := newStorage(context.Background())
@@ -630,7 +634,7 @@ func (a *App) render(w http.ResponseWriter, name string, data any) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	tmpl := a.templates
 	if a.reloadTemplates {
-		loaded, err := parseTemplates()
+		loaded, err := template.New("").Funcs(templateFuncs).ParseFS(os.DirFS("."), "templates/*.html")
 		if err != nil {
 			log.Printf("template reload failed: %v", err)
 		} else {
@@ -796,7 +800,7 @@ func formatDate(date string) string {
 }
 
 func parseTemplates() (*template.Template, error) {
-	return template.New("").Funcs(templateFuncs).ParseFS(os.DirFS("."), "templates/*.html")
+	return template.New("").Funcs(templateFuncs).ParseFS(embeddedTemplates, "templates/*.html")
 }
 
 func parseTime(value string) time.Time {
