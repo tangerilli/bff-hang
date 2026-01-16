@@ -5,6 +5,7 @@ A lightweight poll app for coordinating hangout days.
 Highlights:
 - Create a poll from upcoming dates with an option to add more in 14-day blocks.
 - Share a unique link and copy it with one click.
+- Creator is included in the availability list right away.
 - See availability update live with HTMX.
 
 ## Requirements

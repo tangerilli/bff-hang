@@ -323,9 +323,10 @@ func (a *App) handleCreatePoll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	title := strings.TrimSpace(r.FormValue("title"))
+	creator := strings.TrimSpace(r.FormValue("creator"))
 	selectedDays := normalizeDays(r.Form["days"])
-	if title == "" || len(selectedDays) == 0 {
-		http.Error(w, "title and at least one day are required", http.StatusBadRequest)
+	if title == "" || creator == "" || len(selectedDays) == 0 {
+		http.Error(w, "title, name, and at least one day are required", http.StatusBadRequest)
 		return
 	}
 
@@ -338,6 +339,18 @@ func (a *App) handleCreatePoll(w http.ResponseWriter, r *http.Request) {
 
 	if err := a.storage.CreatePoll(r.Context(), poll); err != nil {
 		log.Printf("failed to create poll: %v", err)
+		http.Error(w, "unable to create poll", http.StatusInternalServerError)
+		return
+	}
+
+	creatorResponse := Response{
+		ID:        randomID(),
+		Name:      creator,
+		Days:      selectedDays,
+		CreatedAt: time.Now().UTC(),
+	}
+	if err := a.storage.AddResponse(r.Context(), poll.ID, creatorResponse); err != nil {
+		log.Printf("failed to add creator response: %v", err)
 		http.Error(w, "unable to create poll", http.StatusInternalServerError)
 		return
 	}
