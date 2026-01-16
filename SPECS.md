@@ -138,6 +138,8 @@ Terraform config provisions:
 - IAM role + policies for Lambda logging and DynamoDB access
 - Lambda function
 - Lambda Function URL (public)
+- API Gateway HTTP API with custom domain + ACM certificate
+- Route53 DNS records for the custom domain
 
 Packaging and deployment steps are documented in `README.md`.
 

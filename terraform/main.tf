@@ -13,6 +13,10 @@ provider "aws" {
   region = var.aws_region
 }
 
+locals {
+  app_base_url = var.app_base_url != "" ? var.app_base_url : "https://${var.domain_name}"
+}
+
 resource "aws_dynamodb_table" "polls" {
   name         = var.dynamodb_table_name
   billing_mode = "PAY_PER_REQUEST"
@@ -98,7 +102,7 @@ resource "aws_lambda_function" "app" {
   environment {
     variables = {
       DYNAMODB_TABLE = aws_dynamodb_table.polls.name
-      APP_BASE_URL   = var.app_base_url
+      APP_BASE_URL   = local.app_base_url
     }
   }
 }
@@ -123,6 +127,108 @@ resource "aws_lambda_permission" "public_invoke" {
   principal     = "*"
 }
 
+resource "aws_apigatewayv2_api" "app" {
+  name          = "${var.lambda_function_name}-http"
+  protocol_type = "HTTP"
+}
+
+resource "aws_apigatewayv2_integration" "app" {
+  api_id                 = aws_apigatewayv2_api.app.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.app.arn
+  payload_format_version = "2.0"
+}
+
+resource "aws_apigatewayv2_route" "app" {
+  api_id    = aws_apigatewayv2_api.app.id
+  route_key = "$default"
+  target    = "integrations/${aws_apigatewayv2_integration.app.id}"
+}
+
+resource "aws_apigatewayv2_stage" "app" {
+  api_id      = aws_apigatewayv2_api.app.id
+  name        = "$default"
+  auto_deploy = true
+}
+
+resource "aws_lambda_permission" "apigw_invoke" {
+  statement_id  = "AllowApiGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.app.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.app.execution_arn}/*/*"
+}
+
+resource "aws_acm_certificate" "domain" {
+  domain_name       = var.domain_name
+  validation_method = "DNS"
+}
+
+resource "aws_route53_record" "cert_validation" {
+  for_each = {
+    for dvo in aws_acm_certificate.domain.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  }
+
+  zone_id = var.route53_zone_id
+  name    = each.value.name
+  type    = each.value.type
+  ttl     = 60
+  records = [each.value.record]
+}
+
+resource "aws_acm_certificate_validation" "domain" {
+  certificate_arn         = aws_acm_certificate.domain.arn
+  validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
+}
+
+resource "aws_apigatewayv2_domain_name" "app" {
+  domain_name = var.domain_name
+
+  domain_name_configuration {
+    certificate_arn = aws_acm_certificate_validation.domain.certificate_arn
+    endpoint_type   = "REGIONAL"
+    security_policy = "TLS_1_2"
+  }
+}
+
+resource "aws_apigatewayv2_api_mapping" "app" {
+  api_id      = aws_apigatewayv2_api.app.id
+  domain_name = aws_apigatewayv2_domain_name.app.id
+  stage       = aws_apigatewayv2_stage.app.id
+}
+
+resource "aws_route53_record" "apex" {
+  zone_id = var.route53_zone_id
+  name    = var.domain_name
+  type    = "A"
+
+  alias {
+    name                   = aws_apigatewayv2_domain_name.app.domain_name_configuration[0].target_domain_name
+    zone_id                = aws_apigatewayv2_domain_name.app.domain_name_configuration[0].hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
+resource "aws_route53_record" "apex_ipv6" {
+  zone_id = var.route53_zone_id
+  name    = var.domain_name
+  type    = "AAAA"
+
+  alias {
+    name                   = aws_apigatewayv2_domain_name.app.domain_name_configuration[0].target_domain_name
+    zone_id                = aws_apigatewayv2_domain_name.app.domain_name_configuration[0].hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
 output "lambda_function_url" {
   value = aws_lambda_function_url.app.function_url
+}
+
+output "custom_domain_url" {
+  value = "https://${var.domain_name}"
 }

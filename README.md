@@ -75,3 +75,6 @@ Or run the steps manually:
    ```
 
 3. Use the output `lambda_function_url` as the public endpoint.
+
+Terraform variables `domain_name` and `route53_zone_id` control the custom HTTPS domain. When set (or left at defaults), Terraform provisions
+an HTTPS custom domain and outputs `custom_domain_url`.

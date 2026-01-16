@@ -32,3 +32,15 @@ variable "app_base_url" {
   description = "Public base URL used when rendering share links."
   default     = ""
 }
+
+variable "domain_name" {
+  type        = string
+  description = "Custom domain name for the Lambda HTTP endpoint."
+  default     = "bffhang.fun"
+}
+
+variable "route53_zone_id" {
+  type        = string
+  description = "Route53 hosted zone ID for the custom domain."
+  default     = "Z0041753160CTNVWUAX4D"
+}
