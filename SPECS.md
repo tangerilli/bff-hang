@@ -55,6 +55,7 @@ BFF Hang is a minimal polling app for coordinating hangouts. A poll creator sele
 - `POST /polls` creates a poll and redirects to its URL.
 - `GET /poll/{id}` shows the poll details and response form.
 - `POST /poll/{id}` records a response and returns updated results (HTMX) or full page.
+- `GET /admin/stats` shows poll and response counts.
 
 ### Data model
 
@@ -101,6 +102,7 @@ For each poll day, responses are aggregated into a list of names. A day is flagg
 - Submitting from the same user-specific URL updates the existing response instead of adding a duplicate.
 - Creator-only controls allow deleting responses and editing available dates.
 - Invalid poll links redirect to the homepage and show an error banner.
+- Admin stats page shows total polls and responses (no auth yet).
 - Results table lists availability by day and highlights rows where everyone is free.
 - HTMX updates the results panel without full page reloads.
 

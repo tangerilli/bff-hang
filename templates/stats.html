@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Stats · BFF Hang</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #f7f2ec;
+        --ink: #151515;
+        --muted: #4b5563;
+        --card: rgba(255, 255, 255, 0.86);
+        --shadow: 0 30px 80px rgba(20, 24, 43, 0.18), 0 8px 18px rgba(20, 24, 43, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Space Grotesk", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 15% 20%, rgba(255, 194, 168, 0.6), transparent 45%),
+          radial-gradient(circle at 85% 0%, rgba(120, 232, 209, 0.45), transparent 42%),
+          var(--bg);
+      }
+
+      .shell {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 56px 24px 96px;
+      }
+
+      .card {
+        background: var(--card);
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(12px);
+      }
+
+      h1 {
+        font-family: "Fraunces", "Times New Roman", serif;
+        margin: 0 0 1.5rem;
+        font-size: clamp(2rem, 3.6vw, 3rem);
+      }
+
+      .stat-grid {
+        display: grid;
+        gap: 1.25rem;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+
+      .stat {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 16px;
+        padding: 1.2rem 1.4rem;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+      }
+
+      .stat-label {
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        font-size: 0.7rem;
+        color: var(--muted);
+        font-weight: 700;
+      }
+
+      .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-top: 0.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <div class="card">
+        <h1>System stats</h1>
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="stat-label">Polls created</div>
+            <div class="stat-value">{{.PollCount}}</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Responses submitted</div>
+            <div class="stat-value">{{.ResponseCount}}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

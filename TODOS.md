@@ -15,3 +15,4 @@
 - [x] When editing available dates as the poll creator, right now it only displays the dates that are selected (with an option to add 14 more days after). It should instead display all dates (i.e. the same list of dates as on the homepage when creating a new poll) so that you can add dates in between the ones that are already selected
 - [x] Create a Makefile for building and deploying the app to lambda
 - [x] Clean up the git status by adding a .gitignore file for artifacts that don't need to be tracked (for example zip files created by the deployment process)
+- [x] Create a simple stats page (maybe located at /admin/stats) that displays how many polls have been created in the system, and how many responses to polls have been submitted

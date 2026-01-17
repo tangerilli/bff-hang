@@ -10,6 +10,7 @@ Highlights:
 - Per-user poll URLs with cookie-based redirect and prefilled selections.
 - Invalid poll links return you to the homepage with a friendly message.
 - See availability update live with HTMX.
+- Admin stats page at `/admin/stats` shows total polls and responses.
 
 ## Requirements
 

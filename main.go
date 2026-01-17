@@ -33,6 +33,7 @@ type Storage interface {
 	AddResponse(ctx context.Context, pollID string, response Response) error
 	UpdatePollDays(ctx context.Context, pollID string, days []string) error
 	DeleteResponse(ctx context.Context, pollID string, responseID string) error
+	GetStats(ctx context.Context) (Stats, error)
 }
 
 type Poll struct {
@@ -76,6 +77,11 @@ type PollView struct {
 	IsCreator     bool
 	EditDays      []DayOption
 	PollDaySet    map[string]bool
+}
+
+type Stats struct {
+	PollCount     int
+	ResponseCount int
 }
 
 type DynamoDBStorage struct {
@@ -142,6 +148,7 @@ func main() {
 	mux.HandleFunc("/", app.handleHome)
 	mux.HandleFunc("/polls", app.handleCreatePoll)
 	mux.HandleFunc("/poll/", app.handlePoll)
+	mux.HandleFunc("/admin/stats", app.handleStats)
 
 	if os.Getenv("AWS_LAMBDA_FUNCTION_NAME") != "" {
 		adapter := httpadapter.NewV2(mux)
@@ -292,6 +299,46 @@ func (s *DynamoDBStorage) AddResponse(ctx context.Context, pollID string, respon
 	return err
 }
 
+func (s *DynamoDBStorage) GetStats(ctx context.Context) (Stats, error) {
+	pollCount, err := s.countByType(ctx, "poll")
+	if err != nil {
+		return Stats{}, err
+	}
+	responseCount, err := s.countByType(ctx, "response")
+	if err != nil {
+		return Stats{}, err
+	}
+	return Stats{PollCount: pollCount, ResponseCount: responseCount}, nil
+}
+
+func (s *DynamoDBStorage) countByType(ctx context.Context, itemType string) (int, error) {
+	total := 0
+	var startKey map[string]types.AttributeValue
+	for {
+		out, err := s.client.Scan(ctx, &dynamodb.ScanInput{
+			TableName: &s.Table,
+			Select:    types.SelectCount,
+			FilterExpression: awsString("#t = :type"),
+			ExpressionAttributeNames: map[string]string{
+				"#t": "type",
+			},
+			ExpressionAttributeValues: map[string]types.AttributeValue{
+				":type": &types.AttributeValueMemberS{Value: itemType},
+			},
+			ExclusiveStartKey: startKey,
+		})
+		if err != nil {
+			return 0, err
+		}
+		total += int(out.Count)
+		if len(out.LastEvaluatedKey) == 0 {
+			break
+		}
+		startKey = out.LastEvaluatedKey
+	}
+	return total, nil
+}
+
 func (s *DynamoDBStorage) UpdatePollDays(ctx context.Context, pollID string, days []string) error {
 	_, err := s.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
 		TableName: &s.Table,
@@ -376,6 +423,17 @@ func (s *MemoryStorage) DeleteResponse(ctx context.Context, pollID string, respo
 		}
 	}
 	return nil
+}
+
+func (s *MemoryStorage) GetStats(ctx context.Context) (Stats, error) {
+	responseCount := 0
+	for _, responses := range s.responses {
+		responseCount += len(responses)
+	}
+	return Stats{
+		PollCount:     len(s.polls),
+		ResponseCount: responseCount,
+	}, nil
 }
 
 func (a *App) handleHome(w http.ResponseWriter, r *http.Request) {
@@ -592,6 +650,22 @@ func (a *App) handlePoll(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	stats, err := a.storage.GetStats(r.Context())
+	if err != nil {
+		log.Printf("failed to load stats: %v", err)
+		http.Error(w, "unable to load stats", http.StatusInternalServerError)
+		return
+	}
+
+	a.render(w, "stats.html", stats)
 }
 
 func (a *App) buildPollView(r *http.Request, poll Poll, responses []Response, errMsg string, viewerToken string) PollView {
