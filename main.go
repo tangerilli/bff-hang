@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"embed"
 	"encoding/base32"
 	"errors"
 	"fmt"
-	"embed"
 	"html/template"
 	"log"
+	mathrand "math/rand"
 	"net/http"
 	"os"
 	"sort"
@@ -65,18 +66,19 @@ type DaySummary struct {
 }
 
 type PollView struct {
-	Poll          Poll
-	Responses     []Response
-	Summaries     []DaySummary
-	TotalResponse int
-	Error         string
-	ShareURL      string
-	ViewerToken   string
-	ViewerName    string
-	SelectedDays  map[string]bool
-	IsCreator     bool
-	EditDays      []DayOption
-	PollDaySet    map[string]bool
+	Poll            Poll
+	Responses       []Response
+	Summaries       []DaySummary
+	TotalResponse   int
+	Error           string
+	ShareURL        string
+	ViewerToken     string
+	ViewerName      string
+	PlaceholderName string
+	SelectedDays    map[string]bool
+	IsCreator       bool
+	EditDays        []DayOption
+	PollDaySet      map[string]bool
 }
 
 type Stats struct {
@@ -316,8 +318,8 @@ func (s *DynamoDBStorage) countByType(ctx context.Context, itemType string) (int
 	var startKey map[string]types.AttributeValue
 	for {
 		out, err := s.client.Scan(ctx, &dynamodb.ScanInput{
-			TableName: &s.Table,
-			Select:    types.SelectCount,
+			TableName:        &s.Table,
+			Select:           types.SelectCount,
 			FilterExpression: awsString("#t = :type"),
 			ExpressionAttributeNames: map[string]string{
 				"#t": "type",
@@ -694,19 +696,44 @@ func (a *App) buildPollView(r *http.Request, poll Poll, responses []Response, er
 	}
 
 	return PollView{
-		Poll:          poll,
-		Responses:     responses,
-		Summaries:     summaries,
-		TotalResponse: len(responses),
-		Error:         errMsg,
-		ShareURL:      fmt.Sprintf("%s/poll/%s", strings.TrimRight(baseURL, "/"), poll.ID),
-		ViewerToken:   viewerToken,
-		ViewerName:    viewerName,
-		SelectedDays:  selectedDays,
-		IsCreator:     isCreator(poll, viewerToken),
-		EditDays:      pollEditDays(poll.Days),
-		PollDaySet:    pollDaySet,
+		Poll:            poll,
+		Responses:       responses,
+		Summaries:       summaries,
+		TotalResponse:   len(responses),
+		Error:           errMsg,
+		ShareURL:        fmt.Sprintf("%s/poll/%s", strings.TrimRight(baseURL, "/"), poll.ID),
+		ViewerToken:     viewerToken,
+		ViewerName:      viewerName,
+		PlaceholderName: randomPlaceholderName(),
+		SelectedDays:    selectedDays,
+		IsCreator:       isCreator(poll, viewerToken),
+		EditDays:        pollEditDays(poll.Days),
+		PollDaySet:      pollDaySet,
 	}
+}
+
+var placeholderNames = []string{
+	"Alex",
+	"Jordan",
+	"Riley",
+	"Casey",
+	"Morgan",
+	"Sam",
+	"Jamie",
+	"Avery",
+	"Quinn",
+	"Bailey",
+}
+
+func init() {
+	mathrand.Seed(time.Now().UnixNano())
+}
+
+func randomPlaceholderName() string {
+	if len(placeholderNames) == 0 {
+		return "Alex"
+	}
+	return placeholderNames[mathrand.Intn(len(placeholderNames))]
 }
 
 func (a *App) render(w http.ResponseWriter, name string, data any) {
