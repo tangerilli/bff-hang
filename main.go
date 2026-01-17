@@ -581,13 +581,18 @@ func (a *App) handlePoll(w http.ResponseWriter, r *http.Request) {
 					http.Error(w, "at least one day is required", http.StatusBadRequest)
 					return
 				}
+				previousDays := poll.Days
 				if err := a.storage.UpdatePollDays(r.Context(), pollID, updatedDays); err != nil {
 					log.Printf("failed to update poll days: %v", err)
 					http.Error(w, "unable to update poll", http.StatusInternalServerError)
 					return
 				}
+				addedDays := diffDays(previousDays, updatedDays)
 				for _, response := range responses {
 					filtered := filterDays(response.Days, updatedDays)
+					if isCreator(poll, response.UserToken) && len(addedDays) > 0 {
+						filtered = mergeDays(filtered, addedDays)
+					}
 					if !equalDays(response.Days, filtered) {
 						response.Days = filtered
 						if err := a.storage.AddResponse(r.Context(), pollID, response); err != nil {
@@ -828,6 +833,33 @@ func equalDays(a []string, b []string) bool {
 		}
 	}
 	return true
+}
+
+func diffDays(oldDays []string, newDays []string) []string {
+	oldSet := makeDaySet(oldDays)
+	var added []string
+	for _, day := range newDays {
+		if !oldSet[day] {
+			added = append(added, day)
+		}
+	}
+	return added
+}
+
+func mergeDays(days []string, added []string) []string {
+	if len(added) == 0 {
+		return days
+	}
+	seen := makeDaySet(days)
+	for _, day := range added {
+		seen[day] = true
+	}
+	merged := make([]string, 0, len(seen))
+	for day := range seen {
+		merged = append(merged, day)
+	}
+	sort.Strings(merged)
+	return merged
 }
 
 func pollEditDays(days []string) []DayOption {

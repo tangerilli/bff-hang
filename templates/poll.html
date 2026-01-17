@@ -495,7 +495,7 @@
                         <div class="response-name">{{.Name}}</div>
                         <div class="response-meta">{{len .Days}} days selected</div>
                       </div>
-                      <form method="post" action="/poll/{{$.Poll.ID}}/u/{{$.ViewerToken}}">
+                      <form method="post" action="/poll/{{$.Poll.ID}}/u/{{$.ViewerToken}}" onsubmit="return confirm('Delete this response?');">
                         <input type="hidden" name="action" value="delete-response" />
                         <input type="hidden" name="response_id" value="{{.ID}}" />
                         <button type="submit" class="danger-button">Delete</button>

@@ -17,3 +17,5 @@
 - [x] Clean up the git status by adding a .gitignore file for artifacts that don't need to be tracked (for example zip files created by the deployment process)
 - [x] Create a simple stats page (maybe located at /admin/stats) that displays how many polls have been created in the system, and how many responses to polls have been submitted
 - [x] Deleting a response in production doesn't work, it displays "unable to delete response"
+- [x] As the poll creator, when I edit the poll to add additional available dates, I should automatically be marked as available for those dates, as I wouldn't be adding them if I wasn't available
+- [x] Deleting a users responses should pop up a confirmation modal before proceeding

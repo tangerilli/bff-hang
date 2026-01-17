@@ -11,6 +11,7 @@ Highlights:
 - Invalid poll links return you to the homepage with a friendly message.
 - See availability update live with HTMX.
 - Admin stats page at `/admin/stats` shows total polls and responses.
+- When creators extend the date list, they are auto-marked available for the new dates.
 
 ## Requirements
 

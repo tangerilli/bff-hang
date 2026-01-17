@@ -26,6 +26,7 @@ BFF Hang is a minimal polling app for coordinating hangouts. A poll creator sele
 1. Creator visits their user-specific URL.
 2. Creator can delete responses from individual users.
 3. Creator can update the available dates from a full list of upcoming days and prune existing responses to match.
+4. New dates added by the creator are automatically added to the creator's availability.
 
 ## Requirements (implemented)
 
@@ -103,6 +104,7 @@ For each poll day, responses are aggregated into a list of names. A day is flagg
 - Creator-only controls allow deleting responses and editing available dates.
 - Invalid poll links redirect to the homepage and show an error banner.
 - Admin stats page shows total polls and responses (no auth yet).
+- Creator edits to add dates automatically mark the creator as available for those dates.
 - Results table lists availability by day and highlights rows where everyone is free.
 - HTMX updates the results panel without full page reloads.
 
