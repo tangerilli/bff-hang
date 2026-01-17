@@ -83,7 +83,8 @@ resource "aws_iam_role_policy" "lambda_dynamodb" {
           "dynamodb:PutItem",
           "dynamodb:Query",
           "dynamodb:Scan",
-          "dynamodb:DeleteItem"
+          "dynamodb:DeleteItem",
+          "dynamodb:UpdateItem"
         ]
         Effect   = "Allow"
         Resource = aws_dynamodb_table.polls.arn

@@ -19,3 +19,4 @@
 - [x] Deleting a response in production doesn't work, it displays "unable to delete response"
 - [x] As the poll creator, when I edit the poll to add additional available dates, I should automatically be marked as available for those dates, as I wouldn't be adding them if I wasn't available
 - [x] Deleting a users responses should pop up a confirmation modal before proceeding
+- [x] When updating the poll in production, it displays "unable to update poll" (it works locally)
