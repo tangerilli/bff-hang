@@ -3,10 +3,10 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"embed"
 	"encoding/base32"
 	"errors"
 	"fmt"
-	"embed"
 	"html/template"
 	"log"
 	"net/http"
@@ -316,8 +316,8 @@ func (s *DynamoDBStorage) countByType(ctx context.Context, itemType string) (int
 	var startKey map[string]types.AttributeValue
 	for {
 		out, err := s.client.Scan(ctx, &dynamodb.ScanInput{
-			TableName: &s.Table,
-			Select:    types.SelectCount,
+			TableName:        &s.Table,
+			Select:           types.SelectCount,
 			FilterExpression: awsString("#t = :type"),
 			ExpressionAttributeNames: map[string]string{
 				"#t": "type",
