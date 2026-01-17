@@ -81,7 +81,8 @@ resource "aws_iam_role_policy" "lambda_dynamodb" {
       {
         Action = [
           "dynamodb:PutItem",
-          "dynamodb:Query"
+          "dynamodb:Query",
+          "dynamodb:Scan"
         ]
         Effect   = "Allow"
         Resource = aws_dynamodb_table.polls.arn
