@@ -296,6 +296,38 @@
         align-items: start;
       }
 
+      .calendar-card {
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      .calendar-controls {
+        display: grid;
+        gap: 0.6rem;
+      }
+
+      .calendar-controls input[type="url"] {
+        width: 100%;
+        padding: 0.7rem 0.85rem;
+        border-radius: 12px;
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        font-size: 0.95rem;
+      }
+
+      .calendar-controls input[type="url"]:focus {
+        outline: none;
+        border-color: var(--accent-2);
+        box-shadow: 0 0 0 4px var(--ring);
+      }
+
+      .calendar-frame {
+        width: 100%;
+        min-height: 520px;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 16px;
+        background: #fff;
+      }
+
       table {
         width: 100%;
         border-collapse: separate;
@@ -478,7 +510,20 @@
           </form>
         </section>
 
-        {{template "results.html" .}}
+        <div class="stack">
+          {{template "results.html" .}}
+          <section class="card calendar-card">
+            <h2>Check your Google Calendar</h2>
+            <p class="hint">Paste your Google Calendar embed link to load it here while you pick dates.</p>
+            <div class="calendar-controls">
+              <label for="calendar-embed">Google Calendar embed URL</label>
+              <input id="calendar-embed" type="url" placeholder="https://calendar.google.com/calendar/embed?src=your_calendar_id" />
+              <button type="button" class="ghost-button" id="load-calendar">Load calendar</button>
+            </div>
+            <iframe class="calendar-frame" id="calendar-frame" title="Google Calendar preview"></iframe>
+            <p class="hint">Tip: In Google Calendar, open Settings → Settings for my calendars → Integrate calendar → copy the embed link.</p>
+          </section>
+        </div>
       </div>
 
       {{if .IsCreator}}
@@ -577,6 +622,21 @@
             }
           }
           fallbackCopy(text);
+        });
+      }
+    </script>
+    <script>
+      const calendarInput = document.getElementById("calendar-embed");
+      const calendarButton = document.getElementById("load-calendar");
+      const calendarFrame = document.getElementById("calendar-frame");
+
+      if (calendarInput && calendarButton && calendarFrame) {
+        calendarButton.addEventListener("click", () => {
+          const value = calendarInput.value.trim();
+          if (!value) {
+            return;
+          }
+          calendarFrame.src = value;
         });
       }
     </script>
