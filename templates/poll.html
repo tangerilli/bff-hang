@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{.Poll.Title}} · BFF Hang</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <style>
+      :root {
+        --bg: #f7f2ec;
+        --ink: #151515;
+        --muted: #4b5563;
+        --accent: #ff7a59;
+        --accent-2: #1f9d8b;
+        --accent-3: #f4c95d;
+        --card: rgba(255, 255, 255, 0.86);
+        --stroke: rgba(15, 23, 42, 0.08);
+        --ring: rgba(31, 157, 139, 0.2);
+        --shadow: 0 30px 80px rgba(20, 24, 43, 0.18), 0 8px 18px rgba(20, 24, 43, 0.08);
+        --radius: 20px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Space Grotesk", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 15% 20%, rgba(255, 194, 168, 0.6), transparent 45%),
+          radial-gradient(circle at 85% 0%, rgba(120, 232, 209, 0.45), transparent 42%),
+          radial-gradient(circle at 60% 85%, rgba(244, 201, 93, 0.4), transparent 40%),
+          var(--bg);
+      }
+
+      body::before,
+      body::after {
+        content: "";
+        position: fixed;
+        z-index: 0;
+        pointer-events: none;
+        opacity: 0.6;
+      }
+
+      body::before {
+        width: 320px;
+        height: 320px;
+        top: -120px;
+        right: -80px;
+        background: radial-gradient(circle, rgba(31, 157, 139, 0.35), transparent 70%);
+      }
+
+      body::after {
+        width: 260px;
+        height: 260px;
+        bottom: -120px;
+        left: -80px;
+        background: radial-gradient(circle, rgba(255, 122, 89, 0.35), transparent 70%);
+      }
+
+      .shell {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 56px 24px 96px;
+        position: relative;
+        z-index: 1;
+      }
+
+      h1,
+      h2 {
+        font-family: "Fraunces", "Times New Roman", serif;
+        letter-spacing: -0.02em;
+        color: #101010;
+      }
+
+      h1 {
+        font-size: clamp(2.1rem, 3.4vw, 3.1rem);
+        margin: 0 0 0.75rem;
+      }
+
+      h2 {
+        font-size: clamp(1.35rem, 2.2vw, 1.9rem);
+        margin: 0 0 1rem;
+      }
+
+      p {
+        margin: 0 0 0.75rem;
+        color: var(--muted);
+      }
+
+      .eyebrow {
+        text-transform: uppercase;
+        letter-spacing: 0.32em;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--accent-2);
+        margin-bottom: 0.75rem;
+      }
+
+      .brand-link {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .brand-link:hover {
+        text-decoration: underline;
+        text-underline-offset: 4px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid rgba(255, 255, 255, 0.7);
+        border-radius: var(--radius);
+        padding: 1.75rem;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(12px);
+      }
+
+      .stack {
+        display: grid;
+        gap: 1.25rem;
+      }
+
+      .field {
+        display: grid;
+        gap: 0.5rem;
+      }
+
+      label {
+        font-weight: 600;
+        color: #111827;
+      }
+
+      input[type="text"] {
+        width: 100%;
+        padding: 0.8rem 0.9rem;
+        border-radius: 12px;
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        background: #fff;
+        font-size: 1rem;
+        transition: box-shadow 0.2s, border-color 0.2s;
+      }
+
+      input[type="text"]:focus {
+        outline: none;
+        border-color: var(--accent-2);
+        box-shadow: 0 0 0 4px var(--ring);
+      }
+
+      .days-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.6rem;
+        max-height: 300px;
+        overflow: auto;
+        padding-right: 0.2rem;
+      }
+
+      .day-option {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.65rem 0.8rem;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+      }
+
+      .day-option:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+      }
+
+      .day-option input {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--accent-2);
+      }
+
+      @supports (selector(:has(*))) {
+        .day-option:has(input:checked) {
+          border-color: var(--accent-2);
+          background: #ecfdf5;
+          box-shadow: 0 0 0 3px var(--ring);
+        }
+      }
+
+      button {
+        background: linear-gradient(135deg, var(--accent), #ffb36b);
+        color: #1f130f;
+        border: none;
+        padding: 0.85rem 1.8rem;
+        border-radius: 999px;
+        cursor: pointer;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        box-shadow: 0 16px 30px rgba(255, 122, 89, 0.35);
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+
+      button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 18px 35px rgba(255, 122, 89, 0.45);
+      }
+
+      button:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 4px rgba(255, 122, 89, 0.3);
+      }
+
+      button.ghost-button {
+        background: rgba(255, 255, 255, 0.9);
+        color: #0f172a;
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        box-shadow: none;
+        padding: 0.6rem 1.1rem;
+        font-size: 0.85rem;
+      }
+
+      button.ghost-button:hover {
+        box-shadow: 0 12px 22px rgba(15, 23, 42, 0.12);
+      }
+
+      button.copy-button {
+        background: rgba(15, 23, 42, 0.9);
+        color: #f8fafc;
+        border: 1px solid rgba(148, 163, 184, 0.3);
+        box-shadow: none;
+        padding: 0.6rem 1.1rem;
+        font-size: 0.85rem;
+        justify-self: start;
+      }
+
+      button.copy-button:hover {
+        box-shadow: 0 12px 22px rgba(15, 23, 42, 0.18);
+      }
+
+      button.copy-button.is-copied {
+        background: #1f9d8b;
+        color: #042f2b;
+        border-color: transparent;
+      }
+
+      button.danger-button {
+        background: #fee2e2;
+        color: #7f1d1d;
+        border: 1px solid #fecaca;
+        box-shadow: none;
+        padding: 0.5rem 0.9rem;
+        font-size: 0.8rem;
+      }
+
+      button.danger-button:hover {
+        box-shadow: 0 10px 18px rgba(127, 29, 29, 0.15);
+      }
+
+      .share-card {
+        display: grid;
+        gap: 0.5rem;
+        background: rgba(255, 255, 255, 0.75);
+        border: 1px dashed rgba(31, 157, 139, 0.4);
+        border-radius: 16px;
+        padding: 1rem;
+        box-shadow: 0 14px 24px rgba(15, 23, 42, 0.08);
+      }
+
+      .share-label {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        color: #0f766e;
+        font-weight: 700;
+      }
+
+      .share {
+        background: #0f172a;
+        color: #f8fafc;
+        font-family: "SFMono-Regular", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+        padding: 0.75rem;
+        border-radius: 12px;
+        word-break: break-all;
+        font-size: 0.9rem;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(280px, 360px) 1fr;
+        gap: 2rem;
+        align-items: start;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 0.95rem;
+      }
+
+      thead th {
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 0.7rem;
+        color: #64748b;
+        background: rgba(15, 23, 42, 0.06);
+        padding: 0.75rem;
+      }
+
+      tbody td {
+        padding: 0.85rem;
+        background: rgba(255, 255, 255, 0.7);
+      }
+
+      tbody tr + tr td {
+        border-top: 1px solid rgba(15, 23, 42, 0.08);
+      }
+
+      tbody tr.all-available td {
+        background: linear-gradient(135deg, rgba(31, 157, 139, 0.18), rgba(244, 201, 93, 0.2));
+      }
+
+      .names {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        font-size: 0.9rem;
+        color: #374151;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.6rem;
+        border-radius: 999px;
+        background: rgba(31, 157, 139, 0.15);
+        color: #0f5132;
+        font-weight: 600;
+        font-size: 0.8rem;
+      }
+
+      .error {
+        color: #991b1b;
+        font-weight: 600;
+        background: #fee2e2;
+        border: 1px solid #fecaca;
+        padding: 0.6rem 0.8rem;
+        border-radius: 10px;
+        margin-bottom: 0.75rem;
+      }
+
+      .hint {
+        font-size: 0.9rem;
+        color: #5b6472;
+      }
+
+      .page-header {
+        display: grid;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+      }
+
+      .manage-card {
+        margin-top: 2rem;
+      }
+
+      .manage-grid {
+        display: grid;
+        gap: 1.5rem;
+      }
+
+      .response-list {
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      .response-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.75rem 0.9rem;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.7);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+      }
+
+      .response-name {
+        font-weight: 600;
+        color: #0f172a;
+      }
+
+      .response-meta {
+        font-size: 0.8rem;
+        color: #64748b;
+        margin-top: 0.2rem;
+      }
+
+      .edit-form {
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      .edit-days {
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      @media (min-width: 960px) {
+        .page-header {
+          grid-template-columns: 1.2fr 0.8fr;
+          align-items: center;
+        }
+
+        .manage-grid {
+          grid-template-columns: 1fr 1fr;
+          align-items: start;
+        }
+      }
+
+      @media (max-width: 960px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .card {
+          padding: 1.4rem;
+        }
+      }
+    </style>
+  </head>
+  <body class="poll">
+    <div class="shell">
+      <header class="page-header">
+        <div>
+          <p class="eyebrow"><a class="brand-link" href="/">BFF Hang</a></p>
+          <h1>{{.Poll.Title}}</h1>
+        </div>
+        <div class="share-card">
+          <span class="share-label">Share link</span>
+          <p class="hint">Share this link so friends can respond.</p>
+          <div class="share" id="share-link">{{.ShareURL}}</div>
+          <button type="button" class="copy-button" id="copy-link">Copy link</button>
+        </div>
+      </header>
+
+      <div class="layout">
+        <section class="card">
+          <h2>Add your availability</h2>
+          <form method="post" action="/poll/{{.Poll.ID}}/u/{{.ViewerToken}}" hx-post="/poll/{{.Poll.ID}}/u/{{.ViewerToken}}" hx-target="#poll-results" hx-swap="outerHTML" class="stack">
+            <div class="field">
+              <label for="name">Your name</label>
+              <input id="name" name="name" type="text" placeholder="Taylor" value="{{.ViewerName}}" required />
+            </div>
+
+            <div class="field">
+              <label>Days you can make it</label>
+              <div class="days-grid">
+                {{range .Poll.Days}}
+                  <label class="day-option">
+                    <input type="checkbox" name="days" value="{{.}}" {{if index $.SelectedDays .}}checked{{end}} />
+                    <span>{{formatDate .}}</span>
+                  </label>
+                {{end}}
+              </div>
+            </div>
+
+            <div>
+              <button type="submit">Save availability</button>
+            </div>
+          </form>
+        </section>
+
+        {{template "results.html" .}}
+      </div>
+
+      {{if .IsCreator}}
+        <section class="card manage-card">
+          <h2>Manage poll</h2>
+          <div class="manage-grid">
+            <div>
+              <h3>Responses</h3>
+              {{if .Responses}}
+                <div class="response-list">
+                  {{range .Responses}}
+                    <div class="response-row">
+                      <div>
+                        <div class="response-name">{{.Name}}</div>
+                        <div class="response-meta">{{len .Days}} days selected</div>
+                      </div>
+                      <form method="post" action="/poll/{{$.Poll.ID}}/u/{{$.ViewerToken}}" onsubmit="return confirm('Delete this response?');">
+                        <input type="hidden" name="action" value="delete-response" />
+                        <input type="hidden" name="response_id" value="{{.ID}}" />
+                        <button type="submit" class="danger-button">Delete</button>
+                      </form>
+                    </div>
+                  {{end}}
+                </div>
+              {{else}}
+                <p class="hint">No responses yet.</p>
+              {{end}}
+            </div>
+
+            <div>
+              <h3>Edit available dates</h3>
+              <form method="post" action="/poll/{{$.Poll.ID}}/u/{{$.ViewerToken}}" class="edit-form">
+                <input type="hidden" name="action" value="update-dates" />
+                <div class="days-grid" id="edit-days-grid">
+                  {{range .EditDays}}
+                    <label class="day-option">
+                      <input type="checkbox" name="days" value="{{.Date}}" {{if index $.PollDaySet .Date}}checked{{end}} />
+                      <span>{{.Label}}</span>
+                    </label>
+                  {{end}}
+                </div>
+                <div class="edit-days">
+                  <button type="button" class="ghost-button" id="edit-more-days">More days</button>
+                  <p class="hint">Uncheck to remove dates. Add more in two-week blocks.</p>
+                </div>
+                <div>
+                  <button type="submit">Update dates</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </section>
+      {{end}}
+    </div>
+    <script>
+      const copyButton = document.getElementById("copy-link");
+      const shareLink = document.getElementById("share-link");
+
+      if (copyButton && shareLink) {
+        const defaultLabel = copyButton.textContent;
+
+        const setCopiedState = () => {
+          copyButton.classList.add("is-copied");
+          copyButton.textContent = "Copied!";
+          window.setTimeout(() => {
+            copyButton.classList.remove("is-copied");
+            copyButton.textContent = defaultLabel;
+          }, 1600);
+        };
+
+        const fallbackCopy = (text) => {
+          const textarea = document.createElement("textarea");
+          textarea.value = text;
+          textarea.style.position = "fixed";
+          textarea.style.left = "-9999px";
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand("copy");
+          document.body.removeChild(textarea);
+          setCopiedState();
+        };
+
+        copyButton.addEventListener("click", async () => {
+          const text = shareLink.textContent.trim();
+          if (!text) {
+            return;
+          }
+          if (navigator.clipboard && window.isSecureContext) {
+            try {
+              await navigator.clipboard.writeText(text);
+              setCopiedState();
+              return;
+            } catch (err) {
+              fallbackCopy(text);
+              return;
+            }
+          }
+          fallbackCopy(text);
+        });
+      }
+    </script>
+    <script>
+      const editMoreButton = document.getElementById("edit-more-days");
+      const editDaysGrid = document.getElementById("edit-days-grid");
+
+      if (editMoreButton && editDaysGrid) {
+        const formatter = new Intl.DateTimeFormat("en-US", {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          timeZone: "UTC",
+        });
+
+        const parseDate = (value) => {
+          const parts = value.split("-").map(Number);
+          return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+        };
+
+        const formatValue = (date) => date.toISOString().slice(0, 10);
+
+        const createOption = (date) => {
+          const label = document.createElement("label");
+          label.className = "day-option";
+
+          const input = document.createElement("input");
+          input.type = "checkbox";
+          input.name = "days";
+          input.value = formatValue(date);
+
+          const text = document.createElement("span");
+          text.textContent = formatter.format(date);
+
+          label.append(input, text);
+          return label;
+        };
+
+        editMoreButton.addEventListener("click", () => {
+          const inputs = editDaysGrid.querySelectorAll('input[name="days"]');
+          if (inputs.length === 0) {
+            return;
+          }
+          let cursor = parseDate(inputs[inputs.length - 1].value);
+          for (let i = 0; i < 14; i++) {
+            cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth(), cursor.getUTCDate() + 1));
+            editDaysGrid.appendChild(createOption(cursor));
+          }
+        });
+      }
+    </script>
+  </body>
+</html>

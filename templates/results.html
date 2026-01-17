@@ -1,0 +1,34 @@
+<section class="card" id="poll-results">
+  <h2>Availability summary</h2>
+  <p class="hint">Days highlighted in green work for everyone who has responded.</p>
+  {{if .Error}}
+    <div class="error">{{.Error}}</div>
+  {{end}}
+  {{if eq .TotalResponse 0}}
+    <p class="hint">No responses yet. Be the first to add your availability.</p>
+  {{end}}
+  <table>
+    <thead>
+      <tr>
+        <th>Day</th>
+        <th>Available friends</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Summaries}}
+        <tr class="{{if .AllAvailable}}all-available{{end}}">
+          <td>{{.Label}}</td>
+          <td class="names">
+            {{if .Names}}
+              {{range $name := .Names}}
+                <span class="chip">{{ $name }}</span>
+              {{end}}
+            {{else}}
+              <span class="hint">No one yet</span>
+            {{end}}
+          </td>
+        </tr>
+      {{end}}
+    </tbody>
+  </table>
+</section>

@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BFF Hang</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <style>
+      :root {
+        --bg: #f7f2ec;
+        --ink: #151515;
+        --muted: #4b5563;
+        --accent: #ff7a59;
+        --accent-2: #1f9d8b;
+        --accent-3: #f4c95d;
+        --card: rgba(255, 255, 255, 0.86);
+        --stroke: rgba(15, 23, 42, 0.08);
+        --ring: rgba(31, 157, 139, 0.2);
+        --shadow: 0 30px 80px rgba(20, 24, 43, 0.18), 0 8px 18px rgba(20, 24, 43, 0.08);
+        --radius: 20px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Space Grotesk", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 15% 20%, rgba(255, 194, 168, 0.6), transparent 45%),
+          radial-gradient(circle at 85% 0%, rgba(120, 232, 209, 0.45), transparent 42%),
+          radial-gradient(circle at 60% 85%, rgba(244, 201, 93, 0.4), transparent 40%),
+          var(--bg);
+      }
+
+      body::before,
+      body::after {
+        content: "";
+        position: fixed;
+        z-index: 0;
+        pointer-events: none;
+        opacity: 0.6;
+      }
+
+      body::before {
+        width: 320px;
+        height: 320px;
+        top: -120px;
+        right: -80px;
+        background: radial-gradient(circle, rgba(31, 157, 139, 0.35), transparent 70%);
+      }
+
+      body::after {
+        width: 260px;
+        height: 260px;
+        bottom: -120px;
+        left: -80px;
+        background: radial-gradient(circle, rgba(255, 122, 89, 0.35), transparent 70%);
+      }
+
+      .shell {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 56px 24px 96px;
+        position: relative;
+        z-index: 1;
+      }
+
+      body.home .shell {
+        display: grid;
+        gap: 2.5rem;
+      }
+
+      h1,
+      h2 {
+        font-family: "Fraunces", "Times New Roman", serif;
+        letter-spacing: -0.02em;
+        color: #101010;
+      }
+
+      h1 {
+        font-size: clamp(2.1rem, 3.6vw, 3.3rem);
+        margin: 0 0 0.75rem;
+      }
+
+      h2 {
+        font-size: clamp(1.4rem, 2.4vw, 2rem);
+        margin: 0 0 1rem;
+      }
+
+      p {
+        margin: 0 0 0.75rem;
+        color: var(--muted);
+      }
+
+      .eyebrow {
+        text-transform: uppercase;
+        letter-spacing: 0.32em;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--accent-2);
+        margin-bottom: 0.75rem;
+      }
+
+      .lead {
+        font-size: 1.05rem;
+        color: #1f2937;
+        max-width: 32rem;
+      }
+
+      .hero-highlights {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 1rem;
+      }
+
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.4rem 0.8rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #0f172a;
+      }
+
+      .preview {
+        margin-top: 2rem;
+        background: rgba(255, 255, 255, 0.85);
+        border-radius: 16px;
+        padding: 1rem;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+        display: grid;
+        gap: 0.75rem;
+        max-width: 320px;
+      }
+
+      .preview-header {
+        font-weight: 700;
+        color: #0f172a;
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.9rem;
+      }
+
+      .preview-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.4rem;
+      }
+
+      .preview-pill {
+        text-align: center;
+        font-size: 0.75rem;
+        padding: 0.35rem 0;
+        border-radius: 999px;
+        background: #e2e8f0;
+        color: #475569;
+        font-weight: 600;
+      }
+
+      .preview-pill.is-on {
+        background: linear-gradient(135deg, rgba(31, 157, 139, 0.9), rgba(95, 219, 192, 0.9));
+        color: #032d24;
+      }
+
+      .preview-legend {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.75rem;
+        color: #64748b;
+      }
+
+      .legend-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--accent-2);
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid rgba(255, 255, 255, 0.7);
+        border-radius: var(--radius);
+        padding: 1.75rem;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(12px);
+      }
+
+      .form-card {
+        position: relative;
+        overflow: hidden;
+      }
+
+      .form-card::after {
+        content: "";
+        position: absolute;
+        top: -40px;
+        right: -40px;
+        width: 160px;
+        height: 160px;
+        background: radial-gradient(circle, rgba(255, 122, 89, 0.35), transparent 70%);
+        opacity: 0.8;
+      }
+
+      .stack {
+        display: grid;
+        gap: 1.25rem;
+      }
+
+      .field {
+        display: grid;
+        gap: 0.5rem;
+      }
+
+      label {
+        font-weight: 600;
+        color: #111827;
+      }
+
+      input[type="text"] {
+        width: 100%;
+        padding: 0.8rem 0.9rem;
+        border-radius: 12px;
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        background: #fff;
+        font-size: 1rem;
+        transition: box-shadow 0.2s, border-color 0.2s;
+      }
+
+      input[type="text"]:focus {
+        outline: none;
+        border-color: var(--accent-2);
+        box-shadow: 0 0 0 4px var(--ring);
+      }
+
+      .days-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 0.6rem;
+      }
+
+      .day-option {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.65rem 0.8rem;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+      }
+
+      .day-option:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+      }
+
+      .day-option input {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--accent-2);
+      }
+
+      @supports (selector(:has(*))) {
+        .day-option:has(input:checked) {
+          border-color: var(--accent-2);
+          background: #ecfdf5;
+          box-shadow: 0 0 0 3px var(--ring);
+        }
+      }
+
+      button {
+        background: linear-gradient(135deg, var(--accent), #ffb36b);
+        color: #1f130f;
+        border: none;
+        padding: 0.85rem 1.8rem;
+        border-radius: 999px;
+        cursor: pointer;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        box-shadow: 0 16px 30px rgba(255, 122, 89, 0.35);
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+
+      button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 18px 35px rgba(255, 122, 89, 0.45);
+      }
+
+      button:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 4px rgba(255, 122, 89, 0.3);
+      }
+
+      button.ghost-button {
+        background: rgba(255, 255, 255, 0.85);
+        color: #0f172a;
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        box-shadow: none;
+      }
+
+      button.ghost-button:hover {
+        box-shadow: 0 12px 22px rgba(15, 23, 42, 0.12);
+      }
+
+      .hint {
+        font-size: 0.9rem;
+        color: #5b6472;
+      }
+
+      .banner {
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+        color: #9a3412;
+        padding: 0.75rem 1rem;
+        border-radius: 14px;
+        font-weight: 600;
+        box-shadow: 0 10px 18px rgba(234, 88, 12, 0.12);
+      }
+
+      .more-days {
+        display: grid;
+        gap: 0.5rem;
+        align-items: start;
+      }
+
+      @media (min-width: 960px) {
+        body.home .shell {
+          grid-template-columns: minmax(280px, 1.1fr) minmax(320px, 1fr);
+          align-items: start;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .card {
+          padding: 1.4rem;
+        }
+
+        .days-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body class="home">
+    <div class="shell">
+      {{if .Message}}
+        <div class="banner">{{.Message}}</div>
+      {{end}}
+      <header class="hero">
+        <p class="eyebrow">BFF Hang</p>
+        <h1>Plan a hangout without the back-and-forth.</h1>
+        <p class="lead">Pick the days you can make it, share a link, and let the group converge on the best options.</p>
+        <div class="hero-highlights">
+          <span class="tag">2-minute setup</span>
+          <span class="tag">No login needed</span>
+          <span class="tag">Shareable link</span>
+        </div>
+        <div class="preview" aria-hidden="true">
+          <div class="preview-header">
+            <span>This week</span>
+            <span>Sample</span>
+          </div>
+          <div class="preview-grid">
+            <span class="preview-pill">Mon</span>
+            <span class="preview-pill is-on">Tue</span>
+            <span class="preview-pill">Wed</span>
+            <span class="preview-pill is-on">Thu</span>
+            <span class="preview-pill">Fri</span>
+            <span class="preview-pill is-on">Sat</span>
+            <span class="preview-pill">Sun</span>
+            <span class="preview-pill">Mon</span>
+          </div>
+          <div class="preview-legend">
+            <span class="legend-dot"></span>
+            <span>Everyone free</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="card form-card">
+        <form method="post" action="/polls" class="stack">
+          <div class="field">
+            <label for="title">What are you planning?</label>
+            <input id="title" name="title" type="text" placeholder="Movie night, coffee, board games" required />
+            <p class="hint">Pick every day you are free.</p>
+          </div>
+
+          <div class="field">
+            <label for="creator">Your name</label>
+            <input id="creator" name="creator" type="text" placeholder="Alex" required />
+          </div>
+
+          <div class="field">
+            <label>Days you are available</label>
+            <div class="days-grid" id="days-grid">
+              {{range .Upcoming}}
+                <label class="day-option">
+                  <input type="checkbox" name="days" value="{{.Date}}" />
+                  <span>{{.Label}}</span>
+                </label>
+              {{end}}
+            </div>
+            <div class="more-days">
+              <button type="button" class="ghost-button" id="add-more-days">More days</button>
+              <p class="hint">Need a wider range? Keep adding in two-week blocks.</p>
+            </div>
+          </div>
+
+          <div>
+            <button type="submit">Create poll</button>
+          </div>
+        </form>
+      </section>
+    </div>
+    <script>
+      const addMoreButton = document.getElementById("add-more-days");
+      const daysGrid = document.getElementById("days-grid");
+
+      if (addMoreButton && daysGrid) {
+        const formatter = new Intl.DateTimeFormat("en-US", {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          timeZone: "UTC",
+        });
+
+        const parseDate = (value) => {
+          const parts = value.split("-").map(Number);
+          return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+        };
+
+        const formatValue = (date) => date.toISOString().slice(0, 10);
+
+        const createOption = (date) => {
+          const label = document.createElement("label");
+          label.className = "day-option";
+
+          const input = document.createElement("input");
+          input.type = "checkbox";
+          input.name = "days";
+          input.value = formatValue(date);
+
+          const text = document.createElement("span");
+          text.textContent = formatter.format(date);
+
+          label.append(input, text);
+          return label;
+        };
+
+        addMoreButton.addEventListener("click", () => {
+          const inputs = daysGrid.querySelectorAll('input[name="days"]');
+          if (inputs.length === 0) {
+            return;
+          }
+          let cursor = parseDate(inputs[inputs.length - 1].value);
+          for (let i = 0; i < 14; i++) {
+            cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth(), cursor.getUTCDate() + 1));
+            daysGrid.appendChild(createOption(cursor));
+          }
+        });
+      }
+    </script>
+  </body>
+</html>
