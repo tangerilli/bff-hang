@@ -445,11 +445,13 @@ func (a *App) handleHome(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := struct {
-		Upcoming []DayOption
-		Message  string
+		Upcoming        []DayOption
+		Message         string
+		PlaceholderName string
 	}{
-		Upcoming: upcomingDays(14),
-		Message:  homeMessage(r),
+		Upcoming:        upcomingDays(14),
+		Message:         homeMessage(r),
+		PlaceholderName: randomPlaceholderName(),
 	}
 
 	a.render(w, "home.html", data)
