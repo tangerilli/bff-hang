@@ -66,19 +66,20 @@ type DaySummary struct {
 }
 
 type PollView struct {
-	Poll            Poll
-	Responses       []Response
-	Summaries       []DaySummary
-	TotalResponse   int
-	Error           string
-	ShareURL        string
-	ViewerToken     string
-	ViewerName      string
-	PlaceholderName string
-	SelectedDays    map[string]bool
-	IsCreator       bool
-	EditDays        []DayOption
-	PollDaySet      map[string]bool
+	Poll             Poll
+	Responses        []Response
+	Summaries        []DaySummary
+	TotalResponse    int
+	Error            string
+	ShareURL         string
+	ViewerToken      string
+	ViewerName       string
+	PlaceholderName  string
+	SelectedDays     map[string]bool
+	AllAvailableDays map[string]bool
+	IsCreator        bool
+	EditDays         []DayOption
+	PollDaySet       map[string]bool
 }
 
 type Stats struct {
@@ -696,21 +697,28 @@ func (a *App) buildPollView(r *http.Request, poll Poll, responses []Response, er
 			}
 		}
 	}
+	allAvailableDays := make(map[string]bool)
+	for _, summary := range summaries {
+		if summary.AllAvailable {
+			allAvailableDays[summary.Date] = true
+		}
+	}
 
 	return PollView{
-		Poll:            poll,
-		Responses:       responses,
-		Summaries:       summaries,
-		TotalResponse:   len(responses),
-		Error:           errMsg,
-		ShareURL:        fmt.Sprintf("%s/poll/%s", strings.TrimRight(baseURL, "/"), poll.ID),
-		ViewerToken:     viewerToken,
-		ViewerName:      viewerName,
-		PlaceholderName: randomPlaceholderName(),
-		SelectedDays:    selectedDays,
-		IsCreator:       isCreator(poll, viewerToken),
-		EditDays:        pollEditDays(poll.Days),
-		PollDaySet:      pollDaySet,
+		Poll:             poll,
+		Responses:        responses,
+		Summaries:        summaries,
+		TotalResponse:    len(responses),
+		Error:            errMsg,
+		ShareURL:         fmt.Sprintf("%s/poll/%s", strings.TrimRight(baseURL, "/"), poll.ID),
+		ViewerToken:      viewerToken,
+		ViewerName:       viewerName,
+		PlaceholderName:  randomPlaceholderName(),
+		SelectedDays:     selectedDays,
+		AllAvailableDays: allAvailableDays,
+		IsCreator:        isCreator(poll, viewerToken),
+		EditDays:         pollEditDays(poll.Days),
+		PollDaySet:       pollDaySet,
 	}
 }
 
