@@ -713,16 +713,20 @@ func (a *App) buildPollView(r *http.Request, poll Poll, responses []Response, er
 }
 
 var placeholderNames = []string{
-	"Alex",
-	"Jordan",
-	"Riley",
-	"Casey",
-	"Morgan",
-	"Sam",
-	"Jamie",
-	"Avery",
-	"Quinn",
-	"Bailey",
+	"Ricardo",
+	"Maximus",
+	"Romanoff",
+	"Kristofer",
+	"Jim",
+	"Edwin",
+	"Peter",
+	"Sascha",
+	"Georgina",
+	"Caroline",
+	"Suzette",
+	"Madeline",
+	"Judy",
+	"Veronica",
 }
 
 func init() {
