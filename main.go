@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	mathrand "math/rand"
 	"net/http"
 	"os"
 	"sort"
@@ -65,18 +66,19 @@ type DaySummary struct {
 }
 
 type PollView struct {
-	Poll          Poll
-	Responses     []Response
-	Summaries     []DaySummary
-	TotalResponse int
-	Error         string
-	ShareURL      string
-	ViewerToken   string
-	ViewerName    string
-	SelectedDays  map[string]bool
-	IsCreator     bool
-	EditDays      []DayOption
-	PollDaySet    map[string]bool
+	Poll            Poll
+	Responses       []Response
+	Summaries       []DaySummary
+	TotalResponse   int
+	Error           string
+	ShareURL        string
+	ViewerToken     string
+	ViewerName      string
+	PlaceholderName string
+	SelectedDays    map[string]bool
+	IsCreator       bool
+	EditDays        []DayOption
+	PollDaySet      map[string]bool
 }
 
 type Stats struct {
@@ -443,11 +445,13 @@ func (a *App) handleHome(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := struct {
-		Upcoming []DayOption
-		Message  string
+		Upcoming        []DayOption
+		Message         string
+		PlaceholderName string
 	}{
-		Upcoming: upcomingDays(14),
-		Message:  homeMessage(r),
+		Upcoming:        upcomingDays(14),
+		Message:         homeMessage(r),
+		PlaceholderName: randomPlaceholderName(),
 	}
 
 	a.render(w, "home.html", data)
@@ -694,19 +698,48 @@ func (a *App) buildPollView(r *http.Request, poll Poll, responses []Response, er
 	}
 
 	return PollView{
-		Poll:          poll,
-		Responses:     responses,
-		Summaries:     summaries,
-		TotalResponse: len(responses),
-		Error:         errMsg,
-		ShareURL:      fmt.Sprintf("%s/poll/%s", strings.TrimRight(baseURL, "/"), poll.ID),
-		ViewerToken:   viewerToken,
-		ViewerName:    viewerName,
-		SelectedDays:  selectedDays,
-		IsCreator:     isCreator(poll, viewerToken),
-		EditDays:      pollEditDays(poll.Days),
-		PollDaySet:    pollDaySet,
+		Poll:            poll,
+		Responses:       responses,
+		Summaries:       summaries,
+		TotalResponse:   len(responses),
+		Error:           errMsg,
+		ShareURL:        fmt.Sprintf("%s/poll/%s", strings.TrimRight(baseURL, "/"), poll.ID),
+		ViewerToken:     viewerToken,
+		ViewerName:      viewerName,
+		PlaceholderName: randomPlaceholderName(),
+		SelectedDays:    selectedDays,
+		IsCreator:       isCreator(poll, viewerToken),
+		EditDays:        pollEditDays(poll.Days),
+		PollDaySet:      pollDaySet,
 	}
+}
+
+var placeholderNames = []string{
+	"Ricardo",
+	"Maximus",
+	"Romanoff",
+	"Kristofer",
+	"Jim",
+	"Edwin",
+	"Peter",
+	"Sascha",
+	"Georgina",
+	"Caroline",
+	"Suzette",
+	"Madeline",
+	"Judy",
+	"Veronica",
+}
+
+func init() {
+	mathrand.Seed(time.Now().UnixNano())
+}
+
+func randomPlaceholderName() string {
+	if len(placeholderNames) == 0 {
+		return "Alex"
+	}
+	return placeholderNames[mathrand.Intn(len(placeholderNames))]
 }
 
 func (a *App) render(w http.ResponseWriter, name string, data any) {

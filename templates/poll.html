@@ -457,7 +457,7 @@
           <form method="post" action="/poll/{{.Poll.ID}}/u/{{.ViewerToken}}" hx-post="/poll/{{.Poll.ID}}/u/{{.ViewerToken}}" hx-target="#poll-results" hx-swap="outerHTML" class="stack">
             <div class="field">
               <label for="name">Your name</label>
-              <input id="name" name="name" type="text" placeholder="Taylor" value="{{.ViewerName}}" required />
+              <input id="name" name="name" type="text" placeholder="{{.PlaceholderName}}" value="{{.ViewerName}}" required />
             </div>
 
             <div class="field">
