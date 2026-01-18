@@ -106,6 +106,7 @@ For each poll day, responses are aggregated into a list of names. A day is flagg
 - Admin stats page shows total polls and responses (no auth yet).
 - Creator edits to add dates automatically mark the creator as available for those dates.
 - Results table lists availability by day and highlights rows where everyone is free.
+- Poll response form de-emphasizes days that no longer work for every respondent, while highlighting days that do.
 - HTMX updates the results panel without full page reloads.
 
 ## Configuration
