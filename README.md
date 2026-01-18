@@ -30,6 +30,14 @@ Highlights:
 
 2. Open the app at <http://localhost:8080>.
 
+## Git hooks
+
+This repo ships with a pre-commit hook that runs Go formatting checks, `go vet`, and the full test suite. Enable it locally with:
+
+```bash
+git config core.hooksPath .githooks
+```
+
 ## Configuration
 
 | Variable | Purpose | Default |
