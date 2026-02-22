@@ -173,6 +173,16 @@
         transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
       }
 
+      .day-option.is-available {
+        border-color: rgba(31, 157, 139, 0.6);
+        background: rgba(236, 253, 245, 0.7);
+      }
+
+      .day-option.is-unavailable {
+        opacity: 0.55;
+        filter: grayscale(0.3);
+      }
+
       .day-option:hover {
         transform: translateY(-1px);
         box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
@@ -462,9 +472,12 @@
 
             <div class="field">
               <label>Days you can make it</label>
+              {{if gt .TotalResponse 0}}
+                <p class="hint">Days in green work for everyone so far. Dimmed days won’t work for the full group.</p>
+              {{end}}
               <div class="days-grid">
                 {{range .Poll.Days}}
-                  <label class="day-option">
+                  <label class="day-option{{if gt $.TotalResponse 0}}{{if index $.AllAvailableDays .}} is-available{{else}} is-unavailable{{end}}{{end}}">
                     <input type="checkbox" name="days" value="{{.}}" {{if index $.SelectedDays .}}checked{{end}} />
                     <span>{{formatDate .}}</span>
                   </label>
