@@ -18,17 +18,60 @@
       {{range .Summaries}}
         <tr class="{{if .AllAvailable}}all-available{{end}}">
           <td>{{.Label}}</td>
-          <td class="names">
-            {{if .Names}}
-              {{range $name := .Names}}
-                <span class="chip">{{ $name }}</span>
+          <td>
+            <div class="names">
+              {{if .Names}}
+                {{range $name := .Names}}
+                  <span class="chip">{{ $name }}</span>
+                {{end}}
+              {{else}}
+                <span class="hint">No one yet</span>
               {{end}}
-            {{else}}
-              <span class="hint">No one yet</span>
-            {{end}}
+            </div>
           </td>
         </tr>
       {{end}}
     </tbody>
   </table>
+
+  {{if .HasVenueOptions}}
+    <h2 class="venue-heading">Venue / Activity</h2>
+    <table class="venue-results-table">
+      <thead>
+        <tr>
+          <th class="col-option">Option</th>
+          <th class="col-votes">Votes</th>
+          <th class="col-voters">Voters</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .VenueSummaries}}
+          <tr>
+            <td class="col-option">
+              {{if .Venue.URL}}
+                <a class="venue-title-link" href="{{.Venue.URL}}" target="_blank" rel="noopener noreferrer">{{.Venue.Title}} <span class="external-link-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="6.5" width="14" height="14" rx="3" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 4H20V11" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 4L11 13" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></a>
+              {{else}}
+                <span class="venue-title-text">{{.Venue.Title}}</span>
+              {{end}}
+              {{if .Venue.Description}}
+                <div class="hint">{{.Venue.Description}}</div>
+              {{end}}
+            </td>
+            <td class="col-votes">{{.VoteCount}}</td>
+            <td class="col-voters">
+              <div class="names">
+                {{if .Names}}
+                  {{range $name := .Names}}
+                    <span class="chip">{{ $name }}</span>
+                  {{end}}
+                {{else}}
+                  <span class="hint">No votes yet</span>
+                {{end}}
+              </div>
+            </td>
+          </tr>
+        {{end}}
+      </tbody>
+    </table>
+  {{end}}
 </section>

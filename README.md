@@ -4,9 +4,12 @@ A lightweight poll app for coordinating hangout days.
 
 Highlights:
 - Create a poll from upcoming dates with an option to add more in 14-day blocks.
+- Optionally add venue or activity choices (title required, optional URL/description).
 - Share a unique link and copy it with one click.
 - Creator is included in the availability list right away.
 - Re-submitting from the same user link updates availability instead of adding a duplicate.
+- Responders can vote on one or more venue/activity options.
+- Poll results include a ranked venue/activity list by vote count.
 - Per-user poll URLs with cookie-based redirect and prefilled selections.
 - Invalid poll links return you to the homepage with a friendly message.
 - See availability update live with HTMX.

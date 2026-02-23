@@ -2,7 +2,7 @@
 
 ## Product summary
 
-BFF Hang is a minimal polling app for coordinating hangouts. A poll creator selects all available days (no times) and receives a unique, hard-to-guess shareable URL. Friends respond by entering their name and selecting which of the poll’s days they can attend. The UI highlights days that work for everyone who has responded.
+BFF Hang is a minimal polling app for coordinating hangouts. A poll creator selects all available days (no times), can optionally add venue/activity options, and receives a unique, hard-to-guess shareable URL. Friends respond by entering their name, selecting which poll days they can attend, and optionally voting on one or more venue/activity options. The UI highlights days that work for everyone who has responded and shows venue/activity rankings by votes.
 
 ## Core user flows
 
@@ -10,29 +10,32 @@ BFF Hang is a minimal polling app for coordinating hangouts. A poll creator sele
 
 1. User visits the homepage.
 2. User enters a poll title, their name, and selects all available days from the next 14 days, with the option to append more dates in 14-day blocks.
-3. Server creates a poll and redirects to the poll page.
-4. Poll page displays a shareable link with a one-click copy button, redirects the creator to a user-specific URL, and includes the creator in the availability list.
+3. User can optionally add venue/activity options (title required, URL/description optional).
+4. Server creates a poll and redirects to the poll page.
+5. Poll page displays a shareable link with a one-click copy button, redirects the creator to a user-specific URL, and includes the creator in the availability list.
 
 ### Respond to poll
 
 1. User opens a poll URL.
 2. Server redirects them to a user-specific URL and stores a cookie for future visits. Invalid poll links redirect to the homepage with an error message.
-3. User enters their name and selects available days.
-4. The poll summary updates (via HTMX) and highlights days that work for all respondents.
-5. Re-submitting from the same user-specific URL updates the existing response and pre-fills selections.
+3. User enters their name, selects available days, and can optionally vote on venue/activity options.
+4. The poll summary updates (via HTMX), highlights days that work for all respondents, and shows venue/activity rankings.
+5. Re-submitting from the same user-specific URL updates the existing response and pre-fills day and venue selections.
 
 ### Manage poll (creator)
 
 1. Creator visits their user-specific URL.
 2. Creator can delete responses from individual users.
 3. Creator can update the available dates from a full list of upcoming days and prune existing responses to match.
-4. New dates added by the creator are automatically added to the creator's availability.
+4. Creator can create or edit the optional venue/activity list; removed options are removed from existing responses.
+5. New dates added by the creator are automatically added to the creator's availability.
 
 ## Requirements (implemented)
 
 - No login required; access is controlled by an unguessable poll URL.
 - Unique shareable URLs for each poll.
 - Day-only availability selection.
+- Optional venue/activity voting with ranked results.
 - Each respondent enters a name.
 - Highlight days that are available for everyone who has responded.
 - Backend in Go.
@@ -66,6 +69,7 @@ BFF Hang is a minimal polling app for coordinating hangouts. A poll creator sele
 - `title`
 - `days` (YYYY-MM-DD strings)
 - `creator_token` (random, base32-encoded)
+- `venues` (optional list of `{id,title,url,description}`)
 - `created_at`
 
 **Response**
@@ -73,6 +77,7 @@ BFF Hang is a minimal polling app for coordinating hangouts. A poll creator sele
 - `id` (random, base32-encoded)
 - `name`
 - `days` (subset of poll days)
+- `venue_votes` (subset of poll venue IDs)
 - `user_token` (random, base32-encoded)
 - `created_at`
 
@@ -83,29 +88,34 @@ BFF Hang is a minimal polling app for coordinating hangouts. A poll creator sele
 Single-table design using partition key `pk` and sort key `sk`:
 
 - Poll item: `pk = POLL#{id}`, `sk = POLL`, `type = poll`, plus title/days/timestamps.
+- Poll item includes optional `venues`.
 - Poll item includes `creator_token` for creator-only actions.
-- Response items: `pk = POLL#{id}`, `sk = RESP#{response_id}`, `type = response`, plus name/days/user token/timestamps.
+- Response items: `pk = POLL#{id}`, `sk = RESP#{response_id}`, `type = response`, plus name/days/venue votes/user token/timestamps.
 
 **Memory**
 
 In-memory maps used when `USE_MEMORY_STORE=true` for local development.
 
-### Availability summarization
+### Availability and venue summarization
 
 For each poll day, responses are aggregated into a list of names. A day is flagged as `all-available` when every response includes that day.
+For each venue/activity option, responses are aggregated into vote counts and voter names, then ranked by vote count descending.
 
 ## Frontend behavior
 
 - Home page includes a creator name field and lists the next 14 days as checkbox options, with a "More days" button.
 - Poll page allows name entry and day selection.
+- Poll page optionally includes venue/activity selection.
 - Poll page includes a copy button for the share link.
 - Poll page redirects visitors to user-specific URLs and stores a cookie to return them to the same link.
 - Submitting from the same user-specific URL updates the existing response instead of adding a duplicate.
 - Creator-only controls allow deleting responses and editing available dates.
+- Creator-only controls allow creating/editing venue/activity options.
 - Invalid poll links redirect to the homepage and show an error banner.
 - Admin stats page shows total polls and responses (no auth yet).
 - Creator edits to add dates automatically mark the creator as available for those dates.
 - Results table lists availability by day and highlights rows where everyone is free.
+- Results include a ranked venue/activity table with vote counts and voter names.
 - Poll response form de-emphasizes days that no longer work for every respondent, while highlighting days that do.
 - HTMX updates the results panel without full page reloads.
 

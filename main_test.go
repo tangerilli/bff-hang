@@ -77,6 +77,48 @@ func TestFilterDiffMergeDays(t *testing.T) {
 	}
 }
 
+func TestParseVenuesFromForm(t *testing.T) {
+	existing := map[string]Venue{
+		"existing-id": {ID: "existing-id", Title: "Old"},
+	}
+
+	venues, err := parseVenuesFromForm(
+		[]string{"existing-id", ""},
+		[]string{"Updated title", "Bowling"},
+		[]string{"https://example.com/updated", ""},
+		[]string{"New description", "Team lane"},
+		existing,
+	)
+	if err != nil {
+		t.Fatalf("parse venues: %v", err)
+	}
+	if len(venues) != 2 {
+		t.Fatalf("expected 2 venues, got %d", len(venues))
+	}
+	if venues[0].ID != "existing-id" {
+		t.Fatalf("expected existing id kept, got %s", venues[0].ID)
+	}
+	if venues[1].ID == "" {
+		t.Fatalf("expected generated id for new venue")
+	}
+	if venues[1].Title != "Bowling" {
+		t.Fatalf("unexpected title: %s", venues[1].Title)
+	}
+}
+
+func TestParseVenuesFromFormRequiresTitle(t *testing.T) {
+	_, err := parseVenuesFromForm(
+		nil,
+		[]string{""},
+		[]string{"https://example.com"},
+		nil,
+		nil,
+	)
+	if err == nil {
+		t.Fatalf("expected validation error")
+	}
+}
+
 func TestParsePollPath(t *testing.T) {
 	cases := []struct {
 		path      string
@@ -115,6 +157,27 @@ func TestSummarizeAvailability(t *testing.T) {
 	}
 	if strings.Join(summaries[0].Names, ",") != "A,B" {
 		t.Fatalf("expected sorted names, got %v", summaries[0].Names)
+	}
+}
+
+func TestSummarizeVenueVotes(t *testing.T) {
+	venues := []Venue{
+		{ID: "park", Title: "Park"},
+		{ID: "coffee", Title: "Coffee"},
+	}
+	responses := []Response{
+		{Name: "B", VenueVotes: []string{"park"}},
+		{Name: "A", VenueVotes: []string{"park", "coffee"}},
+	}
+	summaries := summarizeVenueVotes(venues, responses)
+	if len(summaries) != 2 {
+		t.Fatalf("expected 2 venue summaries, got %d", len(summaries))
+	}
+	if summaries[0].Venue.ID != "park" || summaries[0].VoteCount != 2 {
+		t.Fatalf("expected park to lead, got %+v", summaries[0])
+	}
+	if strings.Join(summaries[0].Names, ",") != "A,B" {
+		t.Fatalf("expected sorted voter names, got %v", summaries[0].Names)
 	}
 }
 
@@ -238,6 +301,33 @@ func TestHandleCreatePollSuccess(t *testing.T) {
 	}
 }
 
+func TestHandleCreatePollWithVenues(t *testing.T) {
+	app, storage := newTestApp(t)
+	form := url.Values{}
+	form.Set("title", "Dinner")
+	form.Set("creator", "Sam")
+	form.Add("days", "2024-01-01")
+	form.Add("venue_title", "Sushi place")
+	form.Add("venue_url", "https://example.com/sushi")
+	form.Add("venue_description", "Close to downtown")
+	req := newFormRequest(http.MethodPost, "/polls", form)
+	w := httptest.NewRecorder()
+	app.handleCreatePoll(w, req)
+	if w.Result().StatusCode != http.StatusSeeOther {
+		t.Fatalf("expected redirect, got %d", w.Result().StatusCode)
+	}
+	var poll Poll
+	for _, stored := range storage.polls {
+		poll = stored
+	}
+	if len(poll.Venues) != 1 {
+		t.Fatalf("expected one venue option, got %d", len(poll.Venues))
+	}
+	if poll.Venues[0].Title != "Sushi place" {
+		t.Fatalf("unexpected venue title: %s", poll.Venues[0].Title)
+	}
+}
+
 func TestHandlePollGetRedirect(t *testing.T) {
 	app, storage := newTestApp(t)
 	poll := Poll{ID: "poll-1", Title: "Hang", Days: []string{"2024-01-01"}, CreatorToken: "creator"}
@@ -291,12 +381,19 @@ func TestHandlePollPostHTMXValidation(t *testing.T) {
 
 func TestHandlePollPostAddResponse(t *testing.T) {
 	app, storage := newTestApp(t)
-	poll := Poll{ID: "poll-1", Title: "Hang", Days: []string{"2024-01-01", "2024-01-02"}, CreatorToken: "creator"}
+	poll := Poll{
+		ID:           "poll-1",
+		Title:        "Hang",
+		Days:         []string{"2024-01-01", "2024-01-02"},
+		Venues:       []Venue{{ID: "park", Title: "Park"}, {ID: "movie", Title: "Movie"}},
+		CreatorToken: "creator",
+	}
 	storage.polls[poll.ID] = poll
 	storage.responses[poll.ID] = []Response{{ID: "resp-1", Name: "Creator", Days: poll.Days, UserToken: poll.CreatorToken}}
 	form := url.Values{}
 	form.Set("name", "Jamie")
 	form.Add("days", "2024-01-02")
+	form.Add("venues", "movie")
 	req := newFormRequest(http.MethodPost, "/poll/"+poll.ID+"/u/user-token", form)
 	w := httptest.NewRecorder()
 	app.handlePoll(w, req)
@@ -314,6 +411,16 @@ func TestHandlePollPostAddResponse(t *testing.T) {
 	sort.Strings(names)
 	if strings.Join(names, ",") != "Creator,Jamie" {
 		t.Fatalf("unexpected responses: %v", names)
+	}
+	var jamie Response
+	for _, response := range responses {
+		if response.Name == "Jamie" {
+			jamie = response
+			break
+		}
+	}
+	if !equalDays(jamie.VenueVotes, []string{"movie"}) {
+		t.Fatalf("unexpected venue votes: %v", jamie.VenueVotes)
 	}
 }
 
@@ -343,6 +450,46 @@ func TestHandlePollPostUpdateDates(t *testing.T) {
 	}
 	if !equalDays(responses[0].Days, []string{"2024-01-01", "2024-01-02"}) {
 		t.Fatalf("expected creator auto-marked, got %v", responses[0].Days)
+	}
+}
+
+func TestHandlePollPostUpdateVenuesFiltersVotes(t *testing.T) {
+	app, storage := newTestApp(t)
+	poll := Poll{
+		ID:           "poll-1",
+		Title:        "Hang",
+		Days:         []string{"2024-01-01"},
+		Venues:       []Venue{{ID: "park", Title: "Park"}, {ID: "movie", Title: "Movie"}},
+		CreatorToken: "creator",
+	}
+	storage.polls[poll.ID] = poll
+	storage.responses[poll.ID] = []Response{
+		{ID: "resp-1", Name: "Creator", Days: []string{"2024-01-01"}, VenueVotes: []string{"park"}, UserToken: poll.CreatorToken},
+		{ID: "resp-2", Name: "Sam", Days: []string{"2024-01-01"}, VenueVotes: []string{"park", "movie"}, UserToken: "user"},
+	}
+	form := url.Values{}
+	form.Set("action", "update-venues")
+	form.Add("venue_id", "movie")
+	form.Add("venue_title", "Movie")
+	form.Add("venue_url", "")
+	form.Add("venue_description", "")
+	req := newFormRequest(http.MethodPost, "/poll/"+poll.ID+"/u/"+poll.CreatorToken, form)
+	w := httptest.NewRecorder()
+	app.handlePoll(w, req)
+	if w.Result().StatusCode != http.StatusSeeOther {
+		t.Fatalf("expected redirect, got %d", w.Result().StatusCode)
+	}
+	updated := storage.polls[poll.ID]
+	if len(updated.Venues) != 1 || updated.Venues[0].ID != "movie" {
+		t.Fatalf("expected only movie venue, got %+v", updated.Venues)
+	}
+	for _, response := range storage.responses[poll.ID] {
+		if response.Name == "Creator" && len(response.VenueVotes) != 0 {
+			t.Fatalf("expected creator votes cleared, got %v", response.VenueVotes)
+		}
+		if response.Name == "Sam" && !equalDays(response.VenueVotes, []string{"movie"}) {
+			t.Fatalf("expected sam votes filtered, got %v", response.VenueVotes)
+		}
 	}
 }
 

@@ -89,6 +89,34 @@
         margin: 0 0 1rem;
       }
 
+      .venue-heading {
+        margin-top: 2rem;
+      }
+
+      .venue-results-table {
+        table-layout: fixed;
+      }
+
+      .venue-results-table th,
+      .venue-results-table td {
+        vertical-align: top;
+      }
+
+      .venue-results-table .col-option {
+        width: 44%;
+        text-align: left;
+      }
+
+      .venue-results-table .col-votes {
+        width: 16%;
+        text-align: center;
+      }
+
+      .venue-results-table .col-voters {
+        width: 40%;
+        text-align: left;
+      }
+
       p {
         margin: 0 0 0.75rem;
         color: var(--muted);
@@ -191,6 +219,79 @@
         width: 18px;
         height: 18px;
         accent-color: var(--accent-2);
+      }
+
+      .venue-options {
+        display: grid;
+        gap: 0.65rem;
+      }
+
+      .venue-option {
+        --venue-input-size: 18px;
+        --venue-input-gap: 0.6rem;
+        display: grid;
+        gap: 0.45rem;
+        padding: 0.75rem 0.85rem;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+      }
+
+      .venue-option label {
+        display: grid;
+        grid-template-columns: var(--venue-input-size) minmax(0, 1fr);
+        column-gap: var(--venue-input-gap);
+        align-items: center;
+        margin: 0;
+        font-weight: 600;
+        color: #0f172a;
+      }
+
+      .venue-option input[type="checkbox"] {
+        width: var(--venue-input-size);
+        height: var(--venue-input-size);
+        accent-color: var(--accent-2);
+      }
+
+      .venue-extra {
+        display: grid;
+        gap: 0.3rem;
+        padding-left: calc(var(--venue-input-size) + var(--venue-input-gap));
+      }
+
+      .venue-title-link {
+        color: #0f766e;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.18rem;
+        width: fit-content;
+      }
+
+      .venue-title-link:hover {
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+
+      .venue-title-text {
+        color: #0f172a;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.18rem;
+      }
+
+      .external-link-icon {
+        display: inline-flex;
+        align-items: center;
+        margin-left: 0.22rem;
+        vertical-align: text-bottom;
+      }
+
+      .external-link-icon svg {
+        width: 0.9em;
+        height: 0.9em;
       }
 
       @supports (selector(:has(*))) {
@@ -420,6 +521,24 @@
         gap: 0.75rem;
       }
 
+      .venue-list {
+        display: grid;
+        gap: 0.7rem;
+      }
+
+      .venue-row {
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 14px;
+        padding: 0.75rem;
+        background: rgba(255, 255, 255, 0.75);
+        display: grid;
+        gap: 0.55rem;
+      }
+
+      .venue-row input[type="text"] {
+        font-size: 0.92rem;
+      }
+
       @media (min-width: 960px) {
         .page-header {
           grid-template-columns: 1.2fr 0.8fr;
@@ -484,6 +603,32 @@
               </div>
             </div>
 
+            {{if .HasVenueOptions}}
+              <div class="field">
+                <label>Venues or activities you’re into</label>
+                <p class="hint">Pick as many as you want.</p>
+                <div class="venue-options">
+                  {{range .Poll.Venues}}
+                    <div class="venue-option">
+                      <label>
+                        <input type="checkbox" name="venues" value="{{.ID}}" {{if index $.SelectedVenueVotes .ID}}checked{{end}} />
+                        {{if .URL}}
+                          <a class="venue-title-link" href="{{.URL}}" target="_blank" rel="noopener noreferrer">{{.Title}} <span class="external-link-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="6.5" width="14" height="14" rx="3" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 4H20V11" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 4L11 13" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></a>
+                        {{else}}
+                          <span class="venue-title-text">{{.Title}}</span>
+                        {{end}}
+                      </label>
+                      {{if .Description}}
+                        <div class="venue-extra">
+                          <p class="hint">{{.Description}}</p>
+                        </div>
+                      {{end}}
+                    </div>
+                  {{end}}
+                </div>
+              </div>
+            {{end}}
+
             <div>
               <button type="submit">Save availability</button>
             </div>
@@ -505,7 +650,7 @@
                     <div class="response-row">
                       <div>
                         <div class="response-name">{{.Name}}</div>
-                        <div class="response-meta">{{len .Days}} days selected</div>
+                        <div class="response-meta">{{len .Days}} days selected{{if $.HasVenueOptions}} · {{len .VenueVotes}} venue votes{{end}}</div>
                       </div>
                       <form method="post" action="/poll/{{$.Poll.ID}}/u/{{$.ViewerToken}}" onsubmit="return confirm('Delete this response?');">
                         <input type="hidden" name="action" value="delete-response" />
@@ -538,6 +683,30 @@
                 </div>
                 <div>
                   <button type="submit">Update dates</button>
+                </div>
+              </form>
+            </div>
+
+            <div>
+              <h3>Edit venue/activity options</h3>
+              <form method="post" action="/poll/{{$.Poll.ID}}/u/{{$.ViewerToken}}" class="edit-form">
+                <input type="hidden" name="action" value="update-venues" />
+                <div class="venue-list" id="edit-venue-list">
+                  {{range .EditVenues}}
+                    <div class="venue-row">
+                      <input type="hidden" name="venue_id" value="{{.ID}}" />
+                      <input type="text" name="venue_title" value="{{.Title}}" placeholder="Title (required if used)" />
+                      <input type="text" name="venue_url" value="{{.URL}}" placeholder="URL (optional)" />
+                      <input type="text" name="venue_description" value="{{.Description}}" placeholder="Description (optional)" />
+                    </div>
+                  {{end}}
+                </div>
+                <div class="edit-days">
+                  <button type="button" class="ghost-button" id="edit-add-venue">Add venue/activity</button>
+                  <p class="hint">Delete an option by clearing all fields in that row.</p>
+                </div>
+                <div>
+                  <button type="submit">Update venues</button>
                 </div>
               </form>
             </div>
@@ -637,6 +806,28 @@
             cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth(), cursor.getUTCDate() + 1));
             editDaysGrid.appendChild(createOption(cursor));
           }
+        });
+      }
+    </script>
+    <script>
+      const addVenueButton = document.getElementById("edit-add-venue");
+      const editVenueList = document.getElementById("edit-venue-list");
+
+      if (addVenueButton && editVenueList) {
+        const createVenueRow = () => {
+          const row = document.createElement("div");
+          row.className = "venue-row";
+          row.innerHTML = `
+            <input type="hidden" name="venue_id" value="" />
+            <input type="text" name="venue_title" placeholder="Title (required if used)" />
+            <input type="text" name="venue_url" placeholder="URL (optional)" />
+            <input type="text" name="venue_description" placeholder="Description (optional)" />
+          `;
+          return row;
+        };
+
+        addVenueButton.addEventListener("click", () => {
+          editVenueList.appendChild(createVenueRow());
         });
       }
     </script>

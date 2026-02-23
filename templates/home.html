@@ -337,6 +337,29 @@
         align-items: start;
       }
 
+      .venue-list {
+        display: grid;
+        gap: 0.65rem;
+      }
+
+      .venue-row {
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 14px;
+        padding: 0.8rem;
+        background: rgba(255, 255, 255, 0.75);
+        display: grid;
+        gap: 0.55rem;
+      }
+
+      .venue-row input[type="text"] {
+        font-size: 0.95rem;
+      }
+
+      .venue-row .venue-title {
+        font-weight: 600;
+        color: #0f172a;
+      }
+
       @media (min-width: 960px) {
         body.home .shell {
           grid-template-columns: minmax(280px, 1.1fr) minmax(320px, 1fr);
@@ -420,6 +443,22 @@
             </div>
           </div>
 
+          <div class="field">
+            <label>Venue or activity ideas (optional)</label>
+            <div class="venue-list" id="venue-list">
+              <div class="venue-row">
+                <input type="hidden" name="venue_id" value="" />
+                <input type="text" name="venue_title" placeholder="Title (required if used)" />
+                <input type="text" name="venue_url" placeholder="URL (optional)" />
+                <input type="text" name="venue_description" placeholder="Description (optional)" />
+              </div>
+            </div>
+            <div class="more-days">
+              <button type="button" class="ghost-button" id="add-venue">Add venue/activity</button>
+              <p class="hint">Leave these blank if you only want to vote on dates.</p>
+            </div>
+          </div>
+
           <div>
             <button type="submit">Create poll</button>
           </div>
@@ -429,6 +468,8 @@
     <script>
       const addMoreButton = document.getElementById("add-more-days");
       const daysGrid = document.getElementById("days-grid");
+      const addVenueButton = document.getElementById("add-venue");
+      const venueList = document.getElementById("venue-list");
 
       if (addMoreButton && daysGrid) {
         const formatter = new Intl.DateTimeFormat("en-US", {
@@ -471,6 +512,24 @@
             cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth(), cursor.getUTCDate() + 1));
             daysGrid.appendChild(createOption(cursor));
           }
+        });
+      }
+
+      if (addVenueButton && venueList) {
+        const createVenueRow = () => {
+          const row = document.createElement("div");
+          row.className = "venue-row";
+          row.innerHTML = `
+            <input type="hidden" name="venue_id" value="" />
+            <input type="text" name="venue_title" placeholder="Title (required if used)" />
+            <input type="text" name="venue_url" placeholder="URL (optional)" />
+            <input type="text" name="venue_description" placeholder="Description (optional)" />
+          `;
+          return row;
+        };
+
+        addVenueButton.addEventListener("click", () => {
+          venueList.appendChild(createVenueRow());
         });
       }
     </script>
