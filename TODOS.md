@@ -20,3 +20,4 @@
 - [x] As the poll creator, when I edit the poll to add additional available dates, I should automatically be marked as available for those dates, as I wouldn't be adding them if I wasn't available
 - [x] Deleting a users responses should pop up a confirmation modal before proceeding
 - [x] When updating the poll in production, it displays "unable to update poll" (it works locally)
+- [x] Add optional venue/activity voting to polls, including creator editing and ranked results

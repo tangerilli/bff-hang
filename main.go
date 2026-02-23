@@ -33,24 +33,34 @@ type Storage interface {
 	GetPoll(ctx context.Context, pollID string) (Poll, []Response, error)
 	AddResponse(ctx context.Context, pollID string, response Response) error
 	UpdatePollDays(ctx context.Context, pollID string, days []string) error
+	UpdatePollVenues(ctx context.Context, pollID string, venues []Venue) error
 	DeleteResponse(ctx context.Context, pollID string, responseID string) error
 	GetStats(ctx context.Context) (Stats, error)
+}
+
+type Venue struct {
+	ID          string `dynamodbav:"id"`
+	Title       string `dynamodbav:"title"`
+	URL         string `dynamodbav:"url"`
+	Description string `dynamodbav:"description"`
 }
 
 type Poll struct {
 	ID           string
 	Title        string
 	Days         []string
+	Venues       []Venue
 	CreatorToken string
 	CreatedAt    time.Time
 }
 
 type Response struct {
-	ID        string
-	Name      string
-	Days      []string
-	UserToken string
-	CreatedAt time.Time
+	ID         string
+	Name       string
+	Days       []string
+	VenueVotes []string
+	UserToken  string
+	CreatedAt  time.Time
 }
 
 type DayOption struct {
@@ -65,21 +75,31 @@ type DaySummary struct {
 	AllAvailable bool
 }
 
+type VenueSummary struct {
+	Venue     Venue
+	Names     []string
+	VoteCount int
+}
+
 type PollView struct {
-	Poll             Poll
-	Responses        []Response
-	Summaries        []DaySummary
-	TotalResponse    int
-	Error            string
-	ShareURL         string
-	ViewerToken      string
-	ViewerName       string
-	PlaceholderName  string
-	SelectedDays     map[string]bool
-	AllAvailableDays map[string]bool
-	IsCreator        bool
-	EditDays         []DayOption
-	PollDaySet       map[string]bool
+	Poll               Poll
+	Responses          []Response
+	Summaries          []DaySummary
+	VenueSummaries     []VenueSummary
+	TotalResponse      int
+	Error              string
+	ShareURL           string
+	ViewerToken        string
+	ViewerName         string
+	PlaceholderName    string
+	SelectedDays       map[string]bool
+	SelectedVenueVotes map[string]bool
+	AllAvailableDays   map[string]bool
+	IsCreator          bool
+	EditDays           []DayOption
+	EditVenues         []Venue
+	PollDaySet         map[string]bool
+	HasVenueOptions    bool
 }
 
 type Stats struct {
@@ -99,19 +119,21 @@ type PollItem struct {
 	ID           string   `dynamodbav:"id"`
 	Title        string   `dynamodbav:"title"`
 	Days         []string `dynamodbav:"days"`
+	Venues       []Venue  `dynamodbav:"venues"`
 	CreatorToken string   `dynamodbav:"creator_token"`
 	CreatedAt    string   `dynamodbav:"created_at"`
 }
 
 type ResponseItem struct {
-	PK        string   `dynamodbav:"pk"`
-	SK        string   `dynamodbav:"sk"`
-	Type      string   `dynamodbav:"type"`
-	ID        string   `dynamodbav:"id"`
-	Name      string   `dynamodbav:"name"`
-	Days      []string `dynamodbav:"days"`
-	UserToken string   `dynamodbav:"user_token"`
-	CreatedAt string   `dynamodbav:"created_at"`
+	PK         string   `dynamodbav:"pk"`
+	SK         string   `dynamodbav:"sk"`
+	Type       string   `dynamodbav:"type"`
+	ID         string   `dynamodbav:"id"`
+	Name       string   `dynamodbav:"name"`
+	Days       []string `dynamodbav:"days"`
+	VenueVotes []string `dynamodbav:"venue_votes"`
+	UserToken  string   `dynamodbav:"user_token"`
+	CreatedAt  string   `dynamodbav:"created_at"`
 }
 
 type MemoryStorage struct {
@@ -199,6 +221,7 @@ func (s *DynamoDBStorage) CreatePoll(ctx context.Context, poll Poll) error {
 		ID:           poll.ID,
 		Title:        poll.Title,
 		Days:         poll.Days,
+		Venues:       poll.Venues,
 		CreatorToken: poll.CreatorToken,
 		CreatedAt:    poll.CreatedAt.Format(time.RFC3339),
 	}
@@ -251,6 +274,7 @@ func (s *DynamoDBStorage) GetPoll(ctx context.Context, pollID string) (Poll, []R
 				ID:           pollItem.ID,
 				Title:        pollItem.Title,
 				Days:         pollItem.Days,
+				Venues:       pollItem.Venues,
 				CreatorToken: pollItem.CreatorToken,
 				CreatedAt:    parseTime(pollItem.CreatedAt),
 			}
@@ -260,11 +284,12 @@ func (s *DynamoDBStorage) GetPoll(ctx context.Context, pollID string) (Poll, []R
 				return Poll{}, nil, err
 			}
 			responses = append(responses, Response{
-				ID:        respItem.ID,
-				Name:      respItem.Name,
-				Days:      respItem.Days,
-				UserToken: respItem.UserToken,
-				CreatedAt: parseTime(respItem.CreatedAt),
+				ID:         respItem.ID,
+				Name:       respItem.Name,
+				Days:       respItem.Days,
+				VenueVotes: normalizeVenueVotes(respItem.VenueVotes),
+				UserToken:  respItem.UserToken,
+				CreatedAt:  parseTime(respItem.CreatedAt),
 			})
 		}
 	}
@@ -282,14 +307,15 @@ func (s *DynamoDBStorage) GetPoll(ctx context.Context, pollID string) (Poll, []R
 
 func (s *DynamoDBStorage) AddResponse(ctx context.Context, pollID string, response Response) error {
 	item := ResponseItem{
-		PK:        pollPartitionKey(pollID),
-		SK:        "RESP#" + response.ID,
-		Type:      "response",
-		ID:        response.ID,
-		Name:      response.Name,
-		Days:      response.Days,
-		UserToken: response.UserToken,
-		CreatedAt: response.CreatedAt.Format(time.RFC3339),
+		PK:         pollPartitionKey(pollID),
+		SK:         "RESP#" + response.ID,
+		Type:       "response",
+		ID:         response.ID,
+		Name:       response.Name,
+		Days:       response.Days,
+		VenueVotes: normalizeVenueVotes(response.VenueVotes),
+		UserToken:  response.UserToken,
+		CreatedAt:  response.CreatedAt.Format(time.RFC3339),
 	}
 	av, err := attributevalue.MarshalMap(item)
 	if err != nil {
@@ -357,6 +383,25 @@ func (s *DynamoDBStorage) UpdatePollDays(ctx context.Context, pollID string, day
 	return err
 }
 
+func (s *DynamoDBStorage) UpdatePollVenues(ctx context.Context, pollID string, venues []Venue) error {
+	venuesAttr, err := attributevalue.Marshal(venues)
+	if err != nil {
+		return err
+	}
+	_, err = s.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: &s.Table,
+		Key: map[string]types.AttributeValue{
+			"pk": &types.AttributeValueMemberS{Value: pollPartitionKey(pollID)},
+			"sk": &types.AttributeValueMemberS{Value: "POLL"},
+		},
+		UpdateExpression: awsString("SET venues = :venues"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":venues": venuesAttr,
+		},
+	})
+	return err
+}
+
 func (s *DynamoDBStorage) DeleteResponse(ctx context.Context, pollID string, responseID string) error {
 	_, err := s.client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
 		TableName: &s.Table,
@@ -410,6 +455,16 @@ func (s *MemoryStorage) UpdatePollDays(ctx context.Context, pollID string, days 
 		return errNotFound
 	}
 	poll.Days = days
+	s.polls[pollID] = poll
+	return nil
+}
+
+func (s *MemoryStorage) UpdatePollVenues(ctx context.Context, pollID string, venues []Venue) error {
+	poll, ok := s.polls[pollID]
+	if !ok {
+		return errNotFound
+	}
+	poll.Venues = venues
 	s.polls[pollID] = poll
 	return nil
 }
@@ -475,12 +530,24 @@ func (a *App) handleCreatePoll(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "title, name, and at least one day are required", http.StatusBadRequest)
 		return
 	}
+	venues, err := parseVenuesFromForm(
+		r.Form["venue_id"],
+		r.Form["venue_title"],
+		r.Form["venue_url"],
+		r.Form["venue_description"],
+		nil,
+	)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	creatorToken := randomID()
 	poll := Poll{
 		ID:           randomID(),
 		Title:        title,
 		Days:         selectedDays,
+		Venues:       venues,
 		CreatorToken: creatorToken,
 		CreatedAt:    time.Now().UTC(),
 	}
@@ -492,11 +559,12 @@ func (a *App) handleCreatePoll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	creatorResponse := Response{
-		ID:        randomID(),
-		Name:      creator,
-		Days:      selectedDays,
-		UserToken: creatorToken,
-		CreatedAt: time.Now().UTC(),
+		ID:         randomID(),
+		Name:       creator,
+		Days:       selectedDays,
+		VenueVotes: nil,
+		UserToken:  creatorToken,
+		CreatedAt:  time.Now().UTC(),
 	}
 	if err := a.storage.AddResponse(r.Context(), poll.ID, creatorResponse); err != nil {
 		log.Printf("failed to add creator response: %v", err)
@@ -609,6 +677,40 @@ func (a *App) handlePoll(w http.ResponseWriter, r *http.Request) {
 				}
 				http.Redirect(w, r, fmt.Sprintf("/poll/%s/u/%s", pollID, userToken), http.StatusSeeOther)
 				return
+			case "update-venues":
+				existingByID := make(map[string]Venue, len(poll.Venues))
+				for _, venue := range poll.Venues {
+					existingByID[venue.ID] = venue
+				}
+				updatedVenues, err := parseVenuesFromForm(
+					r.Form["venue_id"],
+					r.Form["venue_title"],
+					r.Form["venue_url"],
+					r.Form["venue_description"],
+					existingByID,
+				)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				if err := a.storage.UpdatePollVenues(r.Context(), pollID, updatedVenues); err != nil {
+					log.Printf("failed to update poll venues: %v", err)
+					http.Error(w, "unable to update poll", http.StatusInternalServerError)
+					return
+				}
+				for _, response := range responses {
+					filteredVotes := filterVenueVotes(response.VenueVotes, updatedVenues)
+					if !equalDays(response.VenueVotes, filteredVotes) {
+						response.VenueVotes = filteredVotes
+						if err := a.storage.AddResponse(r.Context(), pollID, response); err != nil {
+							log.Printf("failed to update response venues: %v", err)
+							http.Error(w, "unable to update poll", http.StatusInternalServerError)
+							return
+						}
+					}
+				}
+				http.Redirect(w, r, fmt.Sprintf("/poll/%s/u/%s", pollID, userToken), http.StatusSeeOther)
+				return
 			default:
 				http.Error(w, "unknown action", http.StatusBadRequest)
 				return
@@ -617,6 +719,7 @@ func (a *App) handlePoll(w http.ResponseWriter, r *http.Request) {
 
 		name := strings.TrimSpace(r.FormValue("name"))
 		selectedDays := filterDays(normalizeDays(r.Form["days"]), poll.Days)
+		selectedVenueVotes := filterVenueVotes(normalizeVenueVotes(r.Form["venues"]), poll.Venues)
 		if name == "" || len(selectedDays) == 0 {
 			view := a.buildPollView(r, poll, responses, "Please enter your name and at least one available day.", userToken)
 			if isHTMX(r) {
@@ -629,11 +732,12 @@ func (a *App) handlePoll(w http.ResponseWriter, r *http.Request) {
 		}
 
 		response := Response{
-			ID:        randomID(),
-			Name:      name,
-			Days:      selectedDays,
-			UserToken: userToken,
-			CreatedAt: time.Now().UTC(),
+			ID:         randomID(),
+			Name:       name,
+			Days:       selectedDays,
+			VenueVotes: selectedVenueVotes,
+			UserToken:  userToken,
+			CreatedAt:  time.Now().UTC(),
 		}
 		if existing := findResponseByToken(responses, userToken); existing != nil {
 			response.ID = existing.ID
@@ -680,11 +784,13 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) buildPollView(r *http.Request, poll Poll, responses []Response, errMsg string, viewerToken string) PollView {
 	summaries := summarizeAvailability(poll.Days, responses)
+	venueSummaries := summarizeVenueVotes(poll.Venues, responses)
 	baseURL := a.baseURL
 	if baseURL == "" {
 		baseURL = fmt.Sprintf("%s://%s", schemeForRequest(r), r.Host)
 	}
 	selectedDays := make(map[string]bool)
+	selectedVenueVotes := make(map[string]bool)
 	viewerName := ""
 	pollDaySet := makeDaySet(poll.Days)
 	if viewerToken != "" {
@@ -694,6 +800,9 @@ func (a *App) buildPollView(r *http.Request, poll Poll, responses []Response, er
 				if pollDaySet[day] {
 					selectedDays[day] = true
 				}
+			}
+			for _, venueID := range filterVenueVotes(response.VenueVotes, poll.Venues) {
+				selectedVenueVotes[venueID] = true
 			}
 		}
 	}
@@ -705,20 +814,24 @@ func (a *App) buildPollView(r *http.Request, poll Poll, responses []Response, er
 	}
 
 	return PollView{
-		Poll:             poll,
-		Responses:        responses,
-		Summaries:        summaries,
-		TotalResponse:    len(responses),
-		Error:            errMsg,
-		ShareURL:         fmt.Sprintf("%s/poll/%s", strings.TrimRight(baseURL, "/"), poll.ID),
-		ViewerToken:      viewerToken,
-		ViewerName:       viewerName,
-		PlaceholderName:  randomPlaceholderName(),
-		SelectedDays:     selectedDays,
-		AllAvailableDays: allAvailableDays,
-		IsCreator:        isCreator(poll, viewerToken),
-		EditDays:         pollEditDays(poll.Days),
-		PollDaySet:       pollDaySet,
+		Poll:               poll,
+		Responses:          responses,
+		Summaries:          summaries,
+		VenueSummaries:     venueSummaries,
+		TotalResponse:      len(responses),
+		Error:              errMsg,
+		ShareURL:           fmt.Sprintf("%s/poll/%s", strings.TrimRight(baseURL, "/"), poll.ID),
+		ViewerToken:        viewerToken,
+		ViewerName:         viewerName,
+		PlaceholderName:    randomPlaceholderName(),
+		SelectedDays:       selectedDays,
+		SelectedVenueVotes: selectedVenueVotes,
+		AllAvailableDays:   allAvailableDays,
+		IsCreator:          isCreator(poll, viewerToken),
+		EditDays:           pollEditDays(poll.Days),
+		EditVenues:         pollEditVenues(poll.Venues),
+		PollDaySet:         pollDaySet,
+		HasVenueOptions:    len(poll.Venues) > 0,
 	}
 }
 
@@ -825,6 +938,63 @@ func normalizeDays(input []string) []string {
 	return days
 }
 
+func normalizeVenueVotes(input []string) []string {
+	seen := make(map[string]struct{})
+	var votes []string
+	for _, venueID := range input {
+		venueID = strings.TrimSpace(venueID)
+		if venueID == "" {
+			continue
+		}
+		if _, ok := seen[venueID]; ok {
+			continue
+		}
+		seen[venueID] = struct{}{}
+		votes = append(votes, venueID)
+	}
+	sort.Strings(votes)
+	return votes
+}
+
+func parseVenuesFromForm(ids []string, titles []string, urls []string, descriptions []string, existingByID map[string]Venue) ([]Venue, error) {
+	maxLen := maxInt(len(ids), len(titles), len(urls), len(descriptions))
+	venues := make([]Venue, 0, maxLen)
+	seenIDs := make(map[string]struct{})
+	for i := 0; i < maxLen; i++ {
+		id := strings.TrimSpace(valueAt(ids, i))
+		title := strings.TrimSpace(valueAt(titles, i))
+		url := strings.TrimSpace(valueAt(urls, i))
+		description := strings.TrimSpace(valueAt(descriptions, i))
+		if title == "" && url == "" && description == "" {
+			continue
+		}
+		if title == "" {
+			return nil, errors.New("each venue or activity needs a title")
+		}
+		if id != "" {
+			if _, ok := seenIDs[id]; ok {
+				id = ""
+			}
+			if existingByID != nil {
+				if _, ok := existingByID[id]; !ok {
+					id = ""
+				}
+			}
+		}
+		if id == "" {
+			id = randomID()
+		}
+		seenIDs[id] = struct{}{}
+		venues = append(venues, Venue{
+			ID:          id,
+			Title:       title,
+			URL:         url,
+			Description: description,
+		})
+	}
+	return venues, nil
+}
+
 var templateFuncs = template.FuncMap{
 	"formatDate": formatDate,
 }
@@ -850,6 +1020,17 @@ func makeDaySet(days []string) map[string]bool {
 	return set
 }
 
+func makeVenueSet(venues []Venue) map[string]Venue {
+	set := make(map[string]Venue, len(venues))
+	for _, venue := range venues {
+		if venue.ID == "" {
+			continue
+		}
+		set[venue.ID] = venue
+	}
+	return set
+}
+
 func filterDays(selected []string, allowed []string) []string {
 	if len(selected) == 0 {
 		return selected
@@ -861,6 +1042,21 @@ func filterDays(selected []string, allowed []string) []string {
 			filtered = append(filtered, day)
 		}
 	}
+	return filtered
+}
+
+func filterVenueVotes(selected []string, venues []Venue) []string {
+	if len(selected) == 0 {
+		return selected
+	}
+	allowedSet := makeVenueSet(venues)
+	filtered := make([]string, 0, len(selected))
+	for _, venueID := range selected {
+		if _, ok := allowedSet[venueID]; ok {
+			filtered = append(filtered, venueID)
+		}
+	}
+	sort.Strings(filtered)
 	return filtered
 }
 
@@ -901,6 +1097,66 @@ func mergeDays(days []string, added []string) []string {
 	}
 	sort.Strings(merged)
 	return merged
+}
+
+func pollEditVenues(venues []Venue) []Venue {
+	if len(venues) == 0 {
+		return []Venue{{}}
+	}
+	edited := make([]Venue, len(venues))
+	copy(edited, venues)
+	return edited
+}
+
+func summarizeVenueVotes(venues []Venue, responses []Response) []VenueSummary {
+	if len(venues) == 0 {
+		return nil
+	}
+	namesByVenueID := make(map[string][]string, len(venues))
+	for _, response := range responses {
+		for _, venueID := range filterVenueVotes(response.VenueVotes, venues) {
+			namesByVenueID[venueID] = append(namesByVenueID[venueID], response.Name)
+		}
+	}
+	summaries := make([]VenueSummary, 0, len(venues))
+	for _, venue := range venues {
+		names := append([]string(nil), namesByVenueID[venue.ID]...)
+		sort.Strings(names)
+		summaries = append(summaries, VenueSummary{
+			Venue:     venue,
+			Names:     names,
+			VoteCount: len(names),
+		})
+	}
+	sort.SliceStable(summaries, func(i, j int) bool {
+		if summaries[i].VoteCount != summaries[j].VoteCount {
+			return summaries[i].VoteCount > summaries[j].VoteCount
+		}
+		left := strings.ToLower(summaries[i].Venue.Title)
+		right := strings.ToLower(summaries[j].Venue.Title)
+		if left != right {
+			return left < right
+		}
+		return summaries[i].Venue.ID < summaries[j].Venue.ID
+	})
+	return summaries
+}
+
+func valueAt(values []string, idx int) string {
+	if idx < 0 || idx >= len(values) {
+		return ""
+	}
+	return values[idx]
+}
+
+func maxInt(values ...int) int {
+	maxValue := 0
+	for _, value := range values {
+		if value > maxValue {
+			maxValue = value
+		}
+	}
+	return maxValue
 }
 
 func pollEditDays(days []string) []DayOption {
