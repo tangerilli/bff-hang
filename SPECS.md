@@ -29,6 +29,7 @@ BFF Hang is a minimal polling app for coordinating hangouts. A poll creator sele
 3. Creator can update the available dates from a full list of upcoming days and prune existing responses to match.
 4. Creator can create or edit the optional venue/activity list; removed options are removed from existing responses.
 5. New dates added by the creator are automatically added to the creator's availability.
+6. Creator can duplicate a poll into a new creator-owned poll that keeps the same venue/activity options but starts with no dates or responses.
 
 ## Requirements (implemented)
 
@@ -111,6 +112,7 @@ For each venue/activity option, responses are aggregated into vote counts and vo
 - Submitting from the same user-specific URL updates the existing response instead of adding a duplicate.
 - Creator-only controls allow deleting responses and editing available dates.
 - Creator-only controls allow creating/editing venue/activity options.
+- Creator-only controls allow duplicating a poll into a fresh copy with the same venue/activity options and no dates.
 - Invalid poll links redirect to the homepage and show an error banner.
 - Admin stats page shows total polls and responses (no auth yet).
 - Creator edits to add dates automatically mark the creator as available for those dates.

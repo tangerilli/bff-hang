@@ -512,6 +512,71 @@ func TestHandlePollPostDeleteResponse(t *testing.T) {
 	}
 }
 
+func TestHandlePollPostDuplicatePoll(t *testing.T) {
+	app, storage := newTestApp(t)
+	original := Poll{
+		ID:           "poll-1",
+		Title:        "Hang",
+		Days:         []string{"2024-01-01", "2024-01-02"},
+		Venues:       []Venue{{ID: "park", Title: "Park", URL: "https://example.com/park", Description: "Picnic tables"}},
+		CreatorToken: "creator",
+	}
+	storage.polls[original.ID] = original
+	storage.responses[original.ID] = []Response{
+		{ID: "resp-1", Name: "Creator", Days: original.Days, UserToken: original.CreatorToken},
+		{ID: "resp-2", Name: "Sam", Days: []string{"2024-01-02"}, UserToken: "user"},
+	}
+
+	form := url.Values{}
+	form.Set("action", "duplicate-poll")
+	req := newFormRequest(http.MethodPost, "/poll/"+original.ID+"/u/"+original.CreatorToken, form)
+	w := httptest.NewRecorder()
+
+	app.handlePoll(w, req)
+
+	res := w.Result()
+	if res.StatusCode != http.StatusSeeOther {
+		t.Fatalf("expected redirect, got %d", res.StatusCode)
+	}
+	location := res.Header.Get("Location")
+	if !strings.Contains(location, "/poll/") || !strings.Contains(location, "/u/") {
+		t.Fatalf("unexpected redirect location: %s", location)
+	}
+
+	if len(storage.polls) != 2 {
+		t.Fatalf("expected 2 polls after duplication, got %d", len(storage.polls))
+	}
+
+	var duplicated Poll
+	for _, poll := range storage.polls {
+		if poll.ID != original.ID {
+			duplicated = poll
+			break
+		}
+	}
+	if duplicated.ID == "" {
+		t.Fatalf("expected duplicated poll to be stored")
+	}
+	if duplicated.Title != original.Title {
+		t.Fatalf("expected title copied, got %q", duplicated.Title)
+	}
+	if len(duplicated.Days) != 0 {
+		t.Fatalf("expected duplicated poll to start with no dates, got %v", duplicated.Days)
+	}
+	if duplicated.CreatorToken == "" || duplicated.CreatorToken == original.CreatorToken {
+		t.Fatalf("expected a fresh creator token, got %q", duplicated.CreatorToken)
+	}
+	if len(duplicated.Venues) != 1 || duplicated.Venues[0] != original.Venues[0] {
+		t.Fatalf("expected venues copied, got %+v", duplicated.Venues)
+	}
+	if len(storage.responses[duplicated.ID]) != 0 {
+		t.Fatalf("expected duplicated poll to have no responses")
+	}
+	if !strings.Contains(location, "/poll/"+duplicated.ID+"/u/"+duplicated.CreatorToken) {
+		t.Fatalf("expected redirect to duplicated poll, got %s", location)
+	}
+}
+
 func TestHandleStats(t *testing.T) {
 	app, storage := newTestApp(t)
 	storage.polls["poll-1"] = Poll{ID: "poll-1"}
