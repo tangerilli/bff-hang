@@ -751,6 +751,33 @@ func (a *App) handlePoll(w http.ResponseWriter, r *http.Request) {
 			a.render(w, "poll.html", view)
 			return
 		}
+		updatedVenues, writeInVenueID, err := addVenueWriteIn(
+			poll.Venues,
+			r.FormValue("write_in_venue_title"),
+			r.FormValue("write_in_venue_url"),
+			r.FormValue("write_in_venue_description"),
+		)
+		if err != nil {
+			view := a.buildPollView(r, poll, responses, err.Error(), userToken)
+			if isHTMX(r) {
+				w.WriteHeader(http.StatusBadRequest)
+				a.render(w, "results.html", view)
+				return
+			}
+			a.render(w, "poll.html", view)
+			return
+		}
+		if len(updatedVenues) != len(poll.Venues) {
+			if err := a.storage.UpdatePollVenues(r.Context(), pollID, updatedVenues); err != nil {
+				log.Printf("failed to add write-in venue: %v", err)
+				http.Error(w, "unable to save venue suggestion", http.StatusInternalServerError)
+				return
+			}
+			poll.Venues = updatedVenues
+		}
+		if writeInVenueID != "" {
+			selectedVenueVotes = filterVenueVotes(normalizeVenueVotes(append(selectedVenueVotes, writeInVenueID)), poll.Venues)
+		}
 
 		response := Response{
 			ID:         randomID(),
@@ -1014,6 +1041,31 @@ func parseVenuesFromForm(ids []string, titles []string, urls []string, descripti
 		})
 	}
 	return venues, nil
+}
+
+func addVenueWriteIn(existing []Venue, title string, url string, description string) ([]Venue, string, error) {
+	title = strings.TrimSpace(title)
+	url = strings.TrimSpace(url)
+	description = strings.TrimSpace(description)
+	if title == "" && url == "" && description == "" {
+		return existing, "", nil
+	}
+	if title == "" {
+		return existing, "", errors.New("venue suggestions need a title")
+	}
+	for _, venue := range existing {
+		if strings.EqualFold(strings.TrimSpace(venue.Title), title) {
+			return existing, venue.ID, nil
+		}
+	}
+	venue := Venue{
+		ID:          randomID(),
+		Title:       title,
+		URL:         url,
+		Description: description,
+	}
+	updated := append(cloneVenues(existing), venue)
+	return updated, venue.ID, nil
 }
 
 var templateFuncs = template.FuncMap{

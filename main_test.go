@@ -119,6 +119,38 @@ func TestParseVenuesFromFormRequiresTitle(t *testing.T) {
 	}
 }
 
+func TestAddVenueWriteIn(t *testing.T) {
+	existing := []Venue{{ID: "park", Title: "Park"}}
+	updated, venueID, err := addVenueWriteIn(existing, " Arcade ", " https://example.com ", " Games ")
+	if err != nil {
+		t.Fatalf("add write-in: %v", err)
+	}
+	if len(updated) != 2 {
+		t.Fatalf("expected new venue, got %+v", updated)
+	}
+	if venueID == "" || venueID == "park" {
+		t.Fatalf("expected generated venue id, got %q", venueID)
+	}
+	if updated[1].Title != "Arcade" || updated[1].URL != "https://example.com" || updated[1].Description != "Games" {
+		t.Fatalf("expected trimmed venue fields, got %+v", updated[1])
+	}
+
+	updated, venueID, err = addVenueWriteIn(updated, "park", "", "")
+	if err != nil {
+		t.Fatalf("dedupe write-in: %v", err)
+	}
+	if len(updated) != 2 || venueID != "park" {
+		t.Fatalf("expected existing venue reused, got id=%q venues=%+v", venueID, updated)
+	}
+}
+
+func TestAddVenueWriteInRequiresTitle(t *testing.T) {
+	_, _, err := addVenueWriteIn(nil, "", "https://example.com", "")
+	if err == nil {
+		t.Fatalf("expected validation error")
+	}
+}
+
 func TestParsePollPath(t *testing.T) {
 	cases := []struct {
 		path      string
@@ -421,6 +453,75 @@ func TestHandlePollPostAddResponse(t *testing.T) {
 	}
 	if !equalDays(jamie.VenueVotes, []string{"movie"}) {
 		t.Fatalf("unexpected venue votes: %v", jamie.VenueVotes)
+	}
+}
+
+func TestHandlePollPostWriteInVenue(t *testing.T) {
+	app, storage := newTestApp(t)
+	poll := Poll{
+		ID:           "poll-1",
+		Title:        "Hang",
+		Days:         []string{"2024-01-01"},
+		CreatorToken: "creator",
+	}
+	storage.polls[poll.ID] = poll
+	storage.responses[poll.ID] = []Response{{ID: "resp-1", Name: "Creator", Days: poll.Days, UserToken: poll.CreatorToken}}
+	form := url.Values{}
+	form.Set("name", "Jamie")
+	form.Add("days", "2024-01-01")
+	form.Set("write_in_venue_title", "Arcade")
+	form.Set("write_in_venue_url", "https://example.com/arcade")
+	form.Set("write_in_venue_description", "Open late")
+	req := newFormRequest(http.MethodPost, "/poll/"+poll.ID+"/u/user-token", form)
+	w := httptest.NewRecorder()
+	app.handlePoll(w, req)
+	if w.Result().StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Result().StatusCode)
+	}
+	updatedPoll := storage.polls[poll.ID]
+	if len(updatedPoll.Venues) != 1 {
+		t.Fatalf("expected write-in venue stored, got %+v", updatedPoll.Venues)
+	}
+	venue := updatedPoll.Venues[0]
+	if venue.Title != "Arcade" || venue.URL != "https://example.com/arcade" || venue.Description != "Open late" {
+		t.Fatalf("unexpected write-in venue: %+v", venue)
+	}
+	var jamie Response
+	for _, response := range storage.responses[poll.ID] {
+		if response.Name == "Jamie" {
+			jamie = response
+			break
+		}
+	}
+	if !equalDays(jamie.VenueVotes, []string{venue.ID}) {
+		t.Fatalf("expected write-in venue vote, got %v", jamie.VenueVotes)
+	}
+}
+
+func TestHandlePollPostWriteInVenueRequiresTitle(t *testing.T) {
+	app, storage := newTestApp(t)
+	poll := Poll{
+		ID:           "poll-1",
+		Title:        "Hang",
+		Days:         []string{"2024-01-01"},
+		CreatorToken: "creator",
+	}
+	storage.polls[poll.ID] = poll
+	form := url.Values{}
+	form.Set("name", "Jamie")
+	form.Add("days", "2024-01-01")
+	form.Set("write_in_venue_url", "https://example.com/arcade")
+	req := newFormRequest(http.MethodPost, "/poll/"+poll.ID+"/u/user-token", form)
+	w := httptest.NewRecorder()
+	app.handlePoll(w, req)
+	if w.Result().StatusCode != http.StatusOK {
+		t.Fatalf("expected rendered validation response, got %d", w.Result().StatusCode)
+	}
+	if len(storage.polls[poll.ID].Venues) != 0 {
+		t.Fatalf("expected no venue stored")
+	}
+	if len(storage.responses[poll.ID]) != 0 {
+		t.Fatalf("expected no response stored")
 	}
 }
 
