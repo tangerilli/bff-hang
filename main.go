@@ -576,6 +576,17 @@ func (a *App) handleCreatePoll(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, fmt.Sprintf("/poll/%s/u/%s", poll.ID, creatorToken), http.StatusSeeOther)
 }
 
+func duplicatePoll(source Poll) Poll {
+	return Poll{
+		ID:           randomID(),
+		Title:        source.Title,
+		Days:         nil,
+		Venues:       cloneVenues(source.Venues),
+		CreatorToken: randomID(),
+		CreatedAt:    time.Now().UTC(),
+	}
+}
+
 func (a *App) handlePoll(w http.ResponseWriter, r *http.Request) {
 	pollID, userToken := parsePollPath(r.URL.Path)
 	if pollID == "" {
@@ -710,6 +721,16 @@ func (a *App) handlePoll(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 				http.Redirect(w, r, fmt.Sprintf("/poll/%s/u/%s", pollID, userToken), http.StatusSeeOther)
+				return
+			case "duplicate-poll":
+				duplicated := duplicatePoll(poll)
+				if err := a.storage.CreatePoll(r.Context(), duplicated); err != nil {
+					log.Printf("failed to duplicate poll: %v", err)
+					http.Error(w, "unable to duplicate poll", http.StatusInternalServerError)
+					return
+				}
+				setUserTokenCookie(w, r, duplicated.ID, duplicated.CreatorToken)
+				http.Redirect(w, r, fmt.Sprintf("/poll/%s/u/%s", duplicated.ID, duplicated.CreatorToken), http.StatusSeeOther)
 				return
 			default:
 				http.Error(w, "unknown action", http.StatusBadRequest)
@@ -1103,9 +1124,13 @@ func pollEditVenues(venues []Venue) []Venue {
 	if len(venues) == 0 {
 		return []Venue{{}}
 	}
-	edited := make([]Venue, len(venues))
-	copy(edited, venues)
-	return edited
+	return cloneVenues(venues)
+}
+
+func cloneVenues(venues []Venue) []Venue {
+	cloned := make([]Venue, len(venues))
+	copy(cloned, venues)
+	return cloned
 }
 
 func summarizeVenueVotes(venues []Venue, responses []Response) []VenueSummary {

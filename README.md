@@ -15,6 +15,7 @@ Highlights:
 - See availability update live with HTMX.
 - Admin stats page at `/admin/stats` shows total polls and responses.
 - When creators extend the date list, they are auto-marked available for the new dates.
+- Creators can duplicate a poll from the admin section, keeping venue/activity options while starting from an empty date list.
 
 ## Requirements
 

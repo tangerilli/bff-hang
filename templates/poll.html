@@ -484,6 +484,12 @@
         gap: 1.5rem;
       }
 
+      .manage-actions {
+        margin-top: 1.5rem;
+        display: grid;
+        gap: 0.75rem;
+      }
+
       .response-list {
         display: grid;
         gap: 0.75rem;
@@ -710,6 +716,16 @@
                 </div>
               </form>
             </div>
+          </div>
+          <div class="manage-actions">
+            <div>
+              <h3>Duplicate poll</h3>
+              <p class="hint">Create a fresh copy of this poll with the same venue/activity options and no dates selected yet.</p>
+            </div>
+            <form method="post" action="/poll/{{$.Poll.ID}}/u/{{$.ViewerToken}}" onsubmit="return confirm('Create a duplicate poll with the same venue/activity options and no dates?');">
+              <input type="hidden" name="action" value="duplicate-poll" />
+              <button type="submit" class="ghost-button">Duplicate poll</button>
+            </form>
           </div>
         </section>
       {{end}}
