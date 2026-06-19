@@ -22,3 +22,4 @@
 - [x] When updating the poll in production, it displays "unable to update poll" (it works locally)
 - [x] Add optional venue/activity voting to polls, including creator editing and ranked results
 - [x] Let the poll creator duplicate a poll from the admin section, keeping venue/activity options but starting with no dates
+- [x] Let responders write in their own venue/activity suggestions

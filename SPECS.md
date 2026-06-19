@@ -2,7 +2,7 @@
 
 ## Product summary
 
-BFF Hang is a minimal polling app for coordinating hangouts. A poll creator selects all available days (no times), can optionally add venue/activity options, and receives a unique, hard-to-guess shareable URL. Friends respond by entering their name, selecting which poll days they can attend, and optionally voting on one or more venue/activity options. The UI highlights days that work for everyone who has responded and shows venue/activity rankings by votes.
+BFF Hang is a minimal polling app for coordinating hangouts. A poll creator selects all available days (no times), can optionally add venue/activity options, and receives a unique, hard-to-guess shareable URL. Friends respond by entering their name, selecting which poll days they can attend, optionally voting on one or more venue/activity options, and writing in their own venue/activity suggestions. The UI highlights days that work for everyone who has responded and shows venue/activity rankings by votes.
 
 ## Core user flows
 
@@ -18,9 +18,10 @@ BFF Hang is a minimal polling app for coordinating hangouts. A poll creator sele
 
 1. User opens a poll URL.
 2. Server redirects them to a user-specific URL and stores a cookie for future visits. Invalid poll links redirect to the homepage with an error message.
-3. User enters their name, selects available days, and can optionally vote on venue/activity options.
+3. User enters their name, selects available days, and can optionally vote on venue/activity options or write in a new suggestion.
 4. The poll summary updates (via HTMX), highlights days that work for all respondents, and shows venue/activity rankings.
 5. Re-submitting from the same user-specific URL updates the existing response and pre-fills day and venue selections.
+6. A write-in suggestion is added to the poll's venue/activity list and automatically counted as a vote from the submitting user.
 
 ### Manage poll (creator)
 
@@ -36,7 +37,7 @@ BFF Hang is a minimal polling app for coordinating hangouts. A poll creator sele
 - No login required; access is controlled by an unguessable poll URL.
 - Unique shareable URLs for each poll.
 - Day-only availability selection.
-- Optional venue/activity voting with ranked results.
+- Optional venue/activity voting with ranked results and responder write-in suggestions.
 - Each respondent enters a name.
 - Highlight days that are available for everyone who has responded.
 - Backend in Go.

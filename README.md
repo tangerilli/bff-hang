@@ -8,7 +8,7 @@ Highlights:
 - Share a unique link and copy it with one click.
 - Creator is included in the availability list right away.
 - Re-submitting from the same user link updates availability instead of adding a duplicate.
-- Responders can vote on one or more venue/activity options.
+- Responders can vote on one or more venue/activity options or write in their own suggestion.
 - Poll results include a ranked venue/activity list by vote count.
 - Per-user poll URLs with cookie-based redirect and prefilled selections.
 - Invalid poll links return you to the homepage with a friendly message.

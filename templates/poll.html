@@ -259,6 +259,19 @@
         padding-left: calc(var(--venue-input-size) + var(--venue-input-gap));
       }
 
+      .venue-write-in {
+        display: grid;
+        gap: 0.65rem;
+        padding: 0.85rem;
+        border: 1px dashed rgba(31, 157, 139, 0.35);
+        border-radius: 12px;
+        background: rgba(236, 253, 245, 0.55);
+      }
+
+      .venue-write-in .field {
+        margin: 0;
+      }
+
       .venue-title-link {
         color: #0f766e;
         font-weight: 600;
@@ -609,9 +622,9 @@
               </div>
             </div>
 
-            {{if .HasVenueOptions}}
-              <div class="field">
-                <label>Venues or activities you’re into</label>
+            <div class="field">
+              <label>Venues or activities you’re into</label>
+              {{if .HasVenueOptions}}
                 <p class="hint">Pick as many as you want.</p>
                 <div class="venue-options">
                   {{range .Poll.Venues}}
@@ -632,8 +645,24 @@
                     </div>
                   {{end}}
                 </div>
+              {{else}}
+                <p class="hint">No venue ideas have been added yet.</p>
+              {{end}}
+              <div class="venue-write-in">
+                <div class="field">
+                  <label for="write-in-venue-title">Suggest another venue or activity</label>
+                  <input id="write-in-venue-title" type="text" name="write_in_venue_title" placeholder="Title" />
+                </div>
+                <div class="field">
+                  <label for="write-in-venue-url">URL</label>
+                  <input id="write-in-venue-url" type="text" name="write_in_venue_url" placeholder="Optional" />
+                </div>
+                <div class="field">
+                  <label for="write-in-venue-description">Description</label>
+                  <input id="write-in-venue-description" type="text" name="write_in_venue_description" placeholder="Optional" />
+                </div>
               </div>
-            {{end}}
+            </div>
 
             <div>
               <button type="submit">Save availability</button>
